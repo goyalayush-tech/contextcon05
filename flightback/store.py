@@ -38,6 +38,27 @@ CREATE TABLE IF NOT EXISTS runs (
     created_at REAL NOT NULL,
     ceiling    REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS cases (
+    case_id     TEXT PRIMARY KEY,
+    created_at  REAL NOT NULL,
+    packet      TEXT NOT NULL,
+    approval    TEXT NOT NULL DEFAULT 'awaiting_passenger_approval',
+    approved_at REAL
+);
+CREATE TABLE IF NOT EXISTS followups (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id TEXT NOT NULL,
+    ts      REAL NOT NULL,
+    dedupe  TEXT NOT NULL,
+    kind    TEXT NOT NULL,
+    data    TEXT NOT NULL,
+    UNIQUE(case_id, dedupe)
+);
+CREATE TABLE IF NOT EXISTS airline_evidence (
+    code         TEXT PRIMARY KEY,
+    record       TEXT NOT NULL,
+    retrieved_at REAL NOT NULL
+);
 """
 
 
@@ -119,3 +140,63 @@ class Store:
         if not row:
             raise KeyError(run_id)
         return float(row["ceiling"])
+
+    # -- cases (idempotent: re-saving, re-approving or repeating a follow-up never duplicates) ------
+    def case_save(self, case_id: str, packet: dict) -> None:
+        with self._lock:
+            row = self._db.execute("SELECT 1 FROM cases WHERE case_id=?", (case_id,)).fetchone()
+            if row:
+                self._db.execute("UPDATE cases SET packet=? WHERE case_id=?", (json.dumps(packet), case_id))
+            else:
+                self._db.execute("INSERT INTO cases (case_id, created_at, packet) VALUES (?,?,?)",
+                                 (case_id, time.time(), json.dumps(packet)))
+            self._db.commit()
+
+    def case_get(self, case_id: str) -> Optional[dict]:
+        with self._lock:
+            row = self._db.execute("SELECT * FROM cases WHERE case_id=?", (case_id,)).fetchone()
+        if not row:
+            return None
+        packet = json.loads(row["packet"])
+        packet["approval"] = {"state": row["approval"], "approved_at": row["approved_at"],
+                              "note": "Nothing is ever sent by FLIGHTBACK. Submit manually through the airline or AirSewa."}
+        packet["followups"] = self.followups(case_id)
+        return packet
+
+    def case_approve(self, case_id: str) -> bool:
+        """Returns True only the first time; a repeat is a no-op."""
+        with self._lock:
+            cur = self._db.execute(
+                "UPDATE cases SET approval='approved_by_passenger', approved_at=? "
+                "WHERE case_id=? AND approval!='approved_by_passenger'", (time.time(), case_id))
+            self._db.commit()
+            return cur.rowcount == 1
+
+    def followup_add(self, case_id: str, kind: str, data: dict) -> bool:
+        import hashlib
+        dedupe = hashlib.sha256((kind + json.dumps(data, sort_keys=True)).encode()).hexdigest()[:16]
+        with self._lock:
+            try:
+                self._db.execute("INSERT INTO followups (case_id, ts, dedupe, kind, data) VALUES (?,?,?,?,?)",
+                                 (case_id, time.time(), dedupe, kind, json.dumps(data)))
+                self._db.commit()
+                return True
+            except sqlite3.IntegrityError:
+                return False
+
+    def followups(self, case_id: str) -> list[dict]:
+        with self._lock:
+            rows = self._db.execute("SELECT * FROM followups WHERE case_id=? ORDER BY id", (case_id,)).fetchall()
+        return [{"ts": r["ts"], "kind": r["kind"], "data": json.loads(r["data"])} for r in rows]
+
+    # -- refreshed airline evidence -----------------------------------------------------------
+    def evidence_put(self, code: str, record: dict) -> None:
+        with self._lock:
+            self._db.execute("INSERT OR REPLACE INTO airline_evidence VALUES (?,?,?)",
+                             (code, json.dumps(record), time.time()))
+            self._db.commit()
+
+    def evidence_all(self) -> dict:
+        with self._lock:
+            rows = self._db.execute("SELECT code, record FROM airline_evidence").fetchall()
+        return {r["code"]: json.loads(r["record"]) for r in rows}
