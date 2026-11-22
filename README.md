@@ -24,6 +24,8 @@ of messages to a complete, evidence-backed case, then waits for the passenger's 
 | Delay assessment (CAR Part IV 3.4): meal thresholds by block time, "more than 6 hours" with the right baseline, night-flight hotel rule, no invented cash compensation | Built, tested at every boundary |
 | Refund assessment (CAR Part II): timelines by payment mode, statutory taxes and fees, charge cap, credit-shell consent, 48-hour look-in, shortfall | Built. **Rule pack not fully verified, and says so on every refund case** |
 | Operating-airline resolution (marketing vs operating carrier) | Built |
+| Per-case evidence run: every case re-checks its operating airline through Crustdata under its own credit ceiling, shows the calls and credits in the packet, falls back to the labelled snapshot on any failure, and blocks approval until a changed contact address is confirmed | Built, tested with fake transport and run against real cached responses |
+| Crustdata watch on the six airlines (company news added, pull-only) feeding "LEAD, NOT PROOF" precedent leads; freshness board | Built. Watch #57487 created and its baseline read on 22 Nov 2026 (0 credits). It cannot see grievance-page text, so contact changes come from the Web Fetch hash check |
 | Airline identity and grievance route through Crustdata | Live refresh run on 22 Nov 2026: IndiGo and Air India verified from the airline's own page (contacts unchanged vs the snapshot); Akasa Air blocked (HTTP 403) and reported as CANNOT VERIFY; a repeat call is served from cache for 0 credits. Dated snapshot committed for offline replay |
 | Complaint draft, escalation route, passenger approval gate, follow-up tracking with next-step advice | Built. Approval and follow-ups are idempotent and persisted |
 | Document upload and OCR | **Not built.** Facts are entered with the document and quote each came from |
@@ -39,7 +41,7 @@ cp .env.example .env            # add CRUSTDATA_API_KEY (optional: without it th
 # open http://localhost:8000 and pick a synthetic example
 ```
 
-Tests (90): `.venv/bin/python -m unittest discover -s tests -t .` — no credits used; the Crustdata client is tested with a fake transport.
+Tests (113): `.venv/bin/python -m unittest discover -s tests -t .` — no credits used; the Crustdata client is tested with a fake transport.
 
 ## How it works
 
@@ -67,6 +69,10 @@ Full record: [docs/rule-verification.md](docs/rule-verification.md).
   (21 working days for agent refunds). The 14 working days and 7-day look-in figures come from news reports. For agent and portal
   refunds the engine therefore says "late" only past 21 working days (breaches both versions) and sends the 14 to 21 day band
   to review.
+- **News is a lead, not evidence.** Crustdata's company news has real dates and links but is mostly market and earnings
+  noise, and cannot confirm what happened on a given flight. A title filter keeps only passenger-dispute headlines (36 of
+  about 500 items in the first read), they are labelled "LEAD, NOT PROOF", and the rights engine never sees them. A first,
+  looser filter let through traffic statistics and a licence approval; the false positives are now test cases.
 - **Airline contacts are dated records.** Airlines' own pages name different officers on different pages, so the packet quotes the
   email addresses, the page, the retrieval time and a content hash, and shows a conflict warning.
 
@@ -84,7 +90,7 @@ Full record: [docs/rule-verification.md](docs/rule-verification.md).
 - Document intake with OCR, writing each extracted value with its page and snippet straight into the evidence index.
 - A flight-data provider for actual departure and arrival times.
 - Rule packs for denied boarding (CAR 3.2), downgrading (3.5) and EU/UK 261 for international flights.
-- Crustdata watchers on airline grievance pages, so a changed officer email is flagged before a complaint goes out.
+- Webhook delivery for the watch so leads arrive without a manual "Pull new leads".
 - A partner API so a travel agency can offer the same packet to its customers, with its own credit ceiling.
 
 ## Limits to know

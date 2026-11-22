@@ -43,6 +43,9 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px s
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
 ul.clean{margin:4px 0;padding-left:18px}
 .ok{color:var(--ok)}.bad{color:var(--no)}
+.lead{padding:6px 0;border-top:1px solid var(--line)}.lead .lab{font-size:10.5px;font-weight:700;letter-spacing:.05em;color:var(--rev);background:var(--revbg);padding:1px 6px;border-radius:4px}
+.mode{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px}.mode.live,.mode.cached{background:var(--okbg);color:var(--ok)}.mode.stale_snapshot{background:var(--revbg);color:var(--rev)}.mode.snapshot_only{background:var(--nabg);color:var(--na)}
+td.stale{color:var(--no);font-weight:600}
 </style>
 </head>
 <body>
@@ -83,6 +86,7 @@ ul.clean{margin:4px 0;padding-left:18px}
       <div id="facts"></div>
       <div style="margin-top:12px"><button id="go">Assess my case</button></div>
     </div>
+    <div class="card"><h2>Evidence freshness</h2><div id="fresh" class="small mute">loading…</div></div>
   </section>
   <section id="out"><div class="card"><h2>Result</h2><div class="mute">Pick an example on the left, or fill in your own facts, then press Assess.</div></div></section>
 </main>
@@ -134,6 +138,23 @@ function fillForm(p){
   }
 }
 
+function evidenceRunHtml(c){
+  const r=c.evidence_run||{};
+  const modeText={live:'checked live now',cached:'checked live (answered from today\'s cache, 0 credits)',stale_snapshot:'live check did not verify, showing dated snapshot',snapshot_only:'dated snapshot only'}[r.mode]||r.mode;
+  const calls=(r.calls||[]).map(k=>`<tr><td>${esc(k.endpoint)}</td><td>${k.cached?'cache':esc(k.status)}</td><td>${k.credits}</td><td class="mute small">${esc(k.request_id||'')}</td></tr>`).join('');
+  return `<div class="card"><h2>Evidence run · airline check <span class="mode ${esc(r.mode)}">${esc(modeText)}</span></h2>
+    ${r.reason?`<div class="small mute">${esc(r.reason)}</div>`:''}
+    ${r.mode==='live'||r.mode==='cached'?`<div class="small">Airline page re-read ${esc(r.live_retrieved_at||'')} (HTTP ${esc(r.live_http_status)}) · passage hash <code>${esc((r.live_passage_sha256||'').slice(0,12))}</code> vs snapshot <code>${esc((r.snapshot_passage_sha256||'').slice(0,12))}</code> · contacts ${r.contacts_changed?'<b class="bad">CHANGED</b>':'<b class="ok">unchanged</b>'}${r.passage_changed&&!r.contacts_changed?' <span class="mute">(page text near the officer section differs, contacts do not)</span>':''}</div>`:''}
+    ${calls?`<table style="margin-top:6px"><tr><th>Crustdata call</th><th>Served by</th><th>Credits</th><th>Request id</th></tr>${calls}</table><div class="small mute">Spent ${r.spent} of ${r.ceiling} credits for this case.</div>`:''}
+  </div>`;
+}
+function leadsHtml(c){
+  const l=c.leads||{items:[]};
+  return `<div class="card"><h2>Precedent leads <span class="lead"><span class="lab">LEAD, NOT PROOF</span></span></h2>
+    <div class="small mute">${esc(l.note||'')}</div>
+    ${l.items.length?l.items.map(x=>`<div class="lead"><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a><div class="small mute">${esc(x.published||'date unknown')} · ${esc(x.publisher||'')} · matched: ${esc(x.matched.join(', '))}</div></div>`).join(''):'<div class="mute small" style="margin-top:6px">No leads collected for this airline yet.</div>'}
+  </div>`;
+}
 function render(c){
   current=c;
   const am=c.amounts||{},money=x=>x==null?'—':'Rs '+x;
@@ -162,6 +183,8 @@ function render(c){
     ${g&&g.status!=='primary_verified'?`<div class="warn">Grievance route status: ${esc(g.status)}. ${esc(g.detail||g.status_for_packet||'')}</div>`:''}
     ${routeHtml}
   </div>
+  ${evidenceRunHtml(c)}
+  ${leadsHtml(c)}
   <div class="card"><h2>Still missing</h2>${c.missing.length?`<ul class="clean">${c.missing.map(m=>`<li>${esc(m)}</li>`).join('')}</ul>`:'<div class="mute">Nothing required is missing.</div>'}</div>
   <div class="card"><h2>Complaint draft — not sent</h2>
     <pre id="draft">${esc(c.complaint_draft)}</pre>
@@ -179,7 +202,11 @@ function render(c){
     <table><tr><th>Fact</th><th>Value</th><th>Source</th></tr>${c.evidence_index.map(e=>`<tr><td>${esc(e.fact.replace(/_/g,' '))}</td><td>${esc(e.value)}</td><td class="${e.doc?'':'bad'}">${esc(e.doc||e.provenance)}</td></tr>`).join('')}</table>
   </div>`;
   $('#copy').onclick=()=>navigator.clipboard.writeText(c.complaint_draft);
-  $('#approve').onclick=async()=>{const r=await post(`/api/case/${c.case_id}/approve`);$('#approve').textContent='Approved by you';$('#approve').disabled=true};
+  $('#approve').onclick=async()=>{
+    const ack=c.evidence_run&&c.evidence_run.contacts_changed;
+    if(ack&&!confirm('The airline\'s contact details changed since our snapshot ('+c.evidence_run.changes.join('; ')+'). Have you confirmed them on the airline\'s website?'))return;
+    try{await post(`/api/case/${c.case_id}/approve`,ack?{acknowledge_contact_change:true}:{});$('#approve').textContent='Approved by you';$('#approve').disabled=true}
+    catch(e){$('#approve').insertAdjacentHTML('afterend',`<div class="warn">${esc(e.message)}</div>`)}};
   $('#fu_go').onclick=async()=>{
     const kind=$('#fu_kind').value,val=$('#fu_val').value.trim();
     const data=kind==='complaint_submitted'?{reference:val}:kind==='airline_rejection'?{reason:val}:kind==='refund_received'?{amount:parseFloat(val)}:{summary:val};
@@ -213,18 +240,27 @@ async function loadBadges(){
    <span class="badge">Credits spent this session: ${h.spent.toFixed(2)} / ${h.ceiling}</span>
    ${airs.map(a=>`<span class="badge" title="${esc(a.retrieved_at||'')}">${esc(a.airline)}: ${esc(a.grievance_status.replace('_',' '))}</span>`).join('')}`;
 }
+async function loadFresh(){
+  try{
+    const f=await api('/api/freshness');
+    let w='';
+    try{const ws=await api('/api/watch');w=ws.id?`<div class="small" style="margin-top:6px"><b>Crustdata watch #${ws.id}</b> (${esc(ws.status)}) tracks airline news · last run ${esc(ws.last_run_at||'pending')} · expires ${esc(ws.expires_at)} · billed by Crustdata so far: ${esc(ws.credits_consumed)} credits <button class="sec" id="w_sync" style="padding:2px 8px;font-size:12px">Pull new leads</button> <span id="w_out"></span></div>`:`<div class="small mute" style="margin-top:6px">No watch yet.</div>`}catch(e){w=`<div class="small mute" style="margin-top:6px">Watch: ${esc(e.message)}</div>`}
+    $('#fresh').innerHTML=`<table><tr><th>Airline</th><th>Grievance route</th><th>Age</th><th>Leads</th></tr>${f.airlines.map(a=>`<tr><td>${esc(a.airline)}</td><td>${esc(a.grievance_status.replace(/_/g,' '))}${a.has_live_source?'':' <span class="mute">(identity only)</span>'}</td><td class="${a.stale?'stale':''}">${a.age_hours==null?'n/a':(a.age_hours<48?a.age_hours+' h':Math.round(a.age_hours/24)+' d')}${a.stale?' stale':''}</td><td>${a.leads}</td></tr>`).join('')}</table><div class="small mute">Stale = older than ${f.fresh_within_hours} h. Each case re-checks its airline live under a ${f.case_ceiling}-credit ceiling.</div>${w}`;
+    const b=$('#w_sync');if(b)b.onclick=async()=>{b.disabled=true;try{const r=await post('/api/watch/sync');$('#w_out').textContent=`read ${r.runs_read} run(s), ${r.leads_new} new lead(s)`;loadFresh()}catch(e){$('#w_out').textContent=e.message;b.disabled=false}};
+  }catch(e){$('#fresh').textContent=e.message}
+}
 (async()=>{
   schema=await api('/api/schema');
   const sm=await api('/api/samples');
   $('#sample').innerHTML+=sm.map(s=>`<option value="${s.key}">${esc(s.title)}</option>`).join('');
-  renderFacts();loadBadges();
+  renderFacts();loadBadges();loadFresh();
   $('#kind').onchange=renderFacts;
   $('#x_go').onclick=()=>findFacts().catch(e=>$('#x_out').textContent=e.message);
   $('#sample').onchange=async e=>{if(e.target.value)fillForm(await api('/api/samples/'+e.target.value))};
   $('#go').onclick=async()=>{
-    $('#go').disabled=true;
+    $('#go').disabled=true;$('#go').textContent='Checking evidence…';
     try{render(await post('/api/case',readForm()))}catch(e){$('#out').innerHTML=`<div class="card"><div class="warn">${esc(e.message)}</div></div>`}
-    $('#go').disabled=false;loadBadges();
+    $('#go').disabled=false;$('#go').textContent='Assess my case';loadBadges();loadFresh();
   };
 })();
 </script>

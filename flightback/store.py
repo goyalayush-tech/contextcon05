@@ -54,6 +54,23 @@ CREATE TABLE IF NOT EXISTS followups (
     data    TEXT NOT NULL,
     UNIQUE(case_id, dedupe)
 );
+CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS leads (
+    url       TEXT PRIMARY KEY,
+    code      TEXT NOT NULL,
+    title     TEXT NOT NULL,
+    published TEXT,
+    publisher TEXT,
+    matched   TEXT NOT NULL,
+    via       TEXT NOT NULL,
+    seen_at   REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS watch_runs_seen (
+    watch_id INTEGER NOT NULL,
+    run_id   INTEGER NOT NULL,
+    ts       REAL NOT NULL,
+    PRIMARY KEY (watch_id, run_id)
+);
 CREATE TABLE IF NOT EXISTS airline_evidence (
     code         TEXT PRIMARY KEY,
     record       TEXT NOT NULL,
@@ -200,3 +217,48 @@ class Store:
         with self._lock:
             rows = self._db.execute("SELECT code, record FROM airline_evidence").fetchall()
         return {r["code"]: json.loads(r["record"]) for r in rows}
+
+    # -- settings, leads, watch bookkeeping ----------------------------------------------------
+    def setting_get(self, k: str) -> Optional[str]:
+        with self._lock:
+            row = self._db.execute("SELECT v FROM settings WHERE k=?", (k,)).fetchone()
+        return row["v"] if row else None
+
+    def setting_put(self, k: str, v: str) -> None:
+        with self._lock:
+            self._db.execute("INSERT OR REPLACE INTO settings VALUES (?,?)", (k, v))
+            self._db.commit()
+
+    def leads_add(self, leads: list[dict]) -> int:
+        """Insert new leads (one row per URL). Returns how many were new."""
+        n = 0
+        with self._lock:
+            for l in leads:
+                cur = self._db.execute(
+                    "INSERT OR IGNORE INTO leads (url,code,title,published,publisher,matched,via,seen_at) VALUES (?,?,?,?,?,?,?,?)",
+                    (l["url"], l["code"], l["title"], l["published"], l["publisher"], json.dumps(l["matched"]), l["via"], time.time()))
+                n += cur.rowcount
+            self._db.commit()
+        return n
+
+    def leads_for(self, code: str, limit: int = 5) -> list[dict]:
+        with self._lock:
+            rows = self._db.execute("SELECT * FROM leads WHERE code=? ORDER BY published DESC, seen_at DESC LIMIT ?",
+                                    (code, limit)).fetchall()
+        return [{"code": r["code"], "title": r["title"], "url": r["url"], "published": r["published"],
+                 "publisher": r["publisher"], "matched": json.loads(r["matched"]), "via": r["via"],
+                 "label": "LEAD, NOT PROOF"} for r in rows]
+
+    def leads_count(self, code: str) -> int:
+        with self._lock:
+            return self._db.execute("SELECT COUNT(*) c FROM leads WHERE code=?", (code,)).fetchone()["c"]
+
+    def watch_run_seen(self, watch_id: int, run_id: int) -> bool:
+        with self._lock:
+            return self._db.execute("SELECT 1 FROM watch_runs_seen WHERE watch_id=? AND run_id=?",
+                                    (watch_id, run_id)).fetchone() is not None
+
+    def watch_run_mark(self, watch_id: int, run_id: int) -> None:
+        with self._lock:
+            self._db.execute("INSERT OR IGNORE INTO watch_runs_seen VALUES (?,?,?)", (watch_id, run_id, time.time()))
+            self._db.commit()

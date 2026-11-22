@@ -74,6 +74,8 @@ def estimate_cost(path: str, body: dict) -> float:
         return 0.2 * max(1, len(body.get("names", []) or body.get("domains", []) or [1]))
     if path.startswith("/web/"):
         return 1.0 * max(1, len(body.get("urls", []) or [1]))
+    if path.startswith("/watch"):
+        return 0.0  # creating or reading a watch is free; runs are billed by Crustdata per change notification
     return 1.0  # unknown endpoint: assume 1 credit, never 0
 
 
@@ -111,8 +113,10 @@ class RateLimiter:
             waited += wait
 
 
-def _http_post(url: str, headers: dict, body: dict, timeout: float = 120):
-    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers, method="POST")
+def _http_post(url: str, headers: dict, body: Optional[dict], timeout: float = 120):
+    """POST with a JSON body; a body of None makes it a GET (used for free watch-management reads)."""
+    req = urllib.request.Request(url, data=None if body is None else json.dumps(body).encode(), headers=headers,
+                                 method="GET" if body is None else "POST")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.status, dict(resp.headers), json.loads(resp.read() or b"null")
@@ -221,6 +225,29 @@ class Crustdata:
         self.store.ledger_add(self.run_id, path, key, credits, estimated=estimated, cached=False,
                               request_id=request_id, status="ok")
         return Result(payload, False, credits, fetched_at, request_id)
+
+    def get(self, path: str) -> Result:
+        """Free read (watch status, runs). Not cached, never charged, always in the ledger."""
+        headers = {"authorization": f"Bearer {self.api_key}", "x-api-version": API_VERSION}
+        self.limiter.acquire("core")
+        key = self._key(path, {})
+        try:
+            status, resp_headers, payload = self.transport(BASE_URL + path, headers, None)
+        except (TimeoutError, ConnectionError, urllib.error.URLError, OSError) as e:
+            self._log_error(path, key, None, f"network error: {type(e).__name__}")
+            raise CrustdataError(f"{path} failed: {type(e).__name__}") from e
+        h = {k.lower(): v for k, v in resp_headers.items()}
+        if status == 402:
+            raise CreditsExhausted("Crustdata account is out of credits")
+        if status == 403:
+            self._log_error(path, key, h.get("x-request-id"), "403 endpoint disabled")
+            raise EndpointDisabled(f"{path} is not enabled on this key")
+        if status >= 400:
+            self._log_error(path, key, h.get("x-request-id"), f"{status} {json.dumps(payload)[:200]}")
+            raise CrustdataError(f"{path} -> HTTP {status}: {json.dumps(payload)[:300]}")
+        self.store.ledger_add(self.run_id, path, key, 0.0, estimated=False, cached=False,
+                              request_id=h.get("x-request-id"), status="ok", note="GET, free")
+        return Result(payload, False, 0.0, time.time(), h.get("x-request-id"))
 
     def _log_error(self, path: str, key: str, request_id: Optional[str], note: str) -> None:
         self.store.ledger_add(self.run_id, path, key, 0.0, estimated=False, cached=False,

@@ -211,7 +211,8 @@ def _complaint(kind: str, flight: dict, vals: dict, a: Assessment, airline: dict
     return "\n".join(lines)
 
 
-def build_case(payload: dict, evidence: Optional[dict] = None) -> dict:
+def build_case(payload: dict, evidence: Optional[dict] = None, evidence_run: Optional[dict] = None,
+               leads: Optional[list] = None) -> dict:
     evidence = evidence or load_evidence()
     kind = payload.get("case_type")
     if kind not in KINDS:
@@ -247,6 +248,16 @@ def build_case(payload: dict, evidence: Optional[dict] = None) -> dict:
     if g and g.get("conflicts"):
         warnings.extend(f"Airline source conflict: {c}" for c in g["conflicts"])
 
+    run = evidence_run or {"mode": "snapshot_only", "reason": "Not checked live for this case.", "contacts_changed": False,
+                           "calls": []}
+    if run.get("mode") == "stale_snapshot":
+        snap_at = (g or {}).get("retrieved_at") or "an earlier date"
+        warnings.append(f"The live check of the airline page did not verify: {run.get('reason')} Showing the snapshot "
+                        f"retrieved {snap_at}; confirm the contact addresses on the airline's website before sending.")
+    if run.get("contacts_changed"):
+        warnings.insert(0, "AIRLINE CONTACT CHANGED since the snapshot: " + "; ".join(run.get("changes", [])) +
+                        ". The complaint draft uses the newly retrieved address. Confirm it on the airline's website.")
+
     case_hash = hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()[:12]
     return jsonable({
         "case_id": f"FB-{case_hash}", "case_type": kind,
@@ -268,4 +279,9 @@ def build_case(payload: dict, evidence: Optional[dict] = None) -> dict:
         "approval": {"state": "awaiting_passenger_approval",
                      "note": "Nothing has been sent. Submit manually through the airline's channels or AirSewa."},
         "warnings": warnings,
+        "evidence_run": run,
+        "leads": {"label": "LEAD, NOT PROOF",
+                  "note": "News headlines about this airline's passenger disputes, collected through Crustdata. They "
+                          "are not evidence about your flight and are never used in the rights check above.",
+                  "items": (leads or [])[:5]},
     })
