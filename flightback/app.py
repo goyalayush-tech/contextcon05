@@ -13,6 +13,10 @@ from typing import Any, Optional
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
+from .env import load_env
+
+load_env()
+
 from .airlines import SOURCES, refresh_airline
 from .crustdata import Crustdata
 from .extract import suggest

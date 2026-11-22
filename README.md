@@ -35,7 +35,6 @@ of messages to a complete, evidence-backed case, then waits for the passenger's 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt httpx
 cp .env.example .env            # add CRUSTDATA_API_KEY (optional: without it the app replays the dated snapshot)
-set -a; source .env; set +a
 .venv/bin/uvicorn flightback.app:app --port 8000
 # open http://localhost:8000 and pick a synthetic example
 ```
