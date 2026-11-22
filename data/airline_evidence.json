@@ -1,0 +1,186 @@
+{
+  "_about": "Snapshot of airline identity and grievance-route evidence gathered through Crustdata (/company/identify, /web/enrich/live) on 2026-11-22. The app replays this snapshot when no CRUSTDATA_API_KEY is set; with a key it refreshes through flightback.crustdata. Contact details are dated records, not guarantees: airlines' own pages disagree on officer names, so email addresses and the retrieval time are what the case packet quotes.",
+  "airlines": {
+    "6E": {
+      "airline": "IndiGo",
+      "operator_legal_name": "InterGlobe Aviation Ltd.",
+      "identity": {
+        "endpoint": "/company/identify",
+        "matched_on": "goindigo.in",
+        "match_type": "domain",
+        "confidence": 1.0,
+        "crustdata_company_id": 2247,
+        "name": "IndiGo (InterGlobe Aviation Ltd)",
+        "primary_domain": "goindigo.in",
+        "company_type_label": "Public Company",
+        "employee_count_range": "10001+",
+        "retrieved_on": "2026-11-22",
+        "note": "company_type_label is Crustdata's classification and is not used in any decision."
+      },
+      "grievance": {
+        "status": "primary_verified",
+        "source_url": "https://www.goindigo.in/contact-us.html",
+        "http_status": 200,
+        "retrieved_at": "2026-11-22T13:38:35+05:30",
+        "retrieved_via": "Crustdata /web/enrich/live",
+        "passage": "Customer Grievance Redressal\n\nContact: Customer.experience@goindigo.in; IndiGo’s Call Centre: at 0124-4973838 / 0124-6173838;\n\nNodal Officer, Isha Gandhi at nodalofficer@goindigo.in; 0124-4973838 / 0124-6173838\n\nAppellate Authority, Pratik Arjun Sen at appellateauthority@goindigo.in; 0124-4973838 / 0124-6173838\n\nPostal address: InterGlobe Aviation Ltd., Tower C, Level 1, Global Business Park, M.G. Road, Gurugram – 122002, Haryana, India.",
+        "passage_sha256": "4d69a37f6a02db09e56cdb775a5c3cbd1b7179177e928b5b0aa979ef722b2abe",
+        "contacts": {
+          "nodal_officer_email": "nodalofficer@goindigo.in",
+          "appellate_authority_email": "appellateauthority@goindigo.in",
+          "customer_email": "Customer.experience@goindigo.in",
+          "phone": "0124-4973838 / 0124-6173838"
+        },
+        "named_officers_on_this_page": {
+          "nodal_officer": "Isha Gandhi",
+          "appellate_authority": "Pratik Arjun Sen"
+        },
+        "conflicts": [
+          "Other IndiGo pages name different officers (disability-assistance and feedback-form pages), per search excerpts that were not fetched. Quote the email addresses and this page's date, not the names."
+        ],
+        "official_passenger_charter_url": "https://www.goindigo.in/information/passenger-charter.html"
+      }
+    },
+    "AI": {
+      "airline": "Air India",
+      "operator_legal_name": "Air India Limited",
+      "identity": {
+        "endpoint": "/company/identify",
+        "matched_on": "airindia.com",
+        "match_type": "domain",
+        "confidence": 1.0,
+        "crustdata_company_id": 1388078,
+        "name": "Air India Limited",
+        "primary_domain": "airindia.com",
+        "company_type_label": "Government Agency",
+        "employee_count_range": "10001+",
+        "retrieved_on": "2026-11-22",
+        "note": "company_type_label is Crustdata's classification and is not used in any decision."
+      },
+      "grievance": {
+        "status": "primary_verified",
+        "source_url": "https://www.airindia.com/in/en/contact-us/grievance-resolution.html",
+        "http_status": 200,
+        "retrieved_at": "2026-11-22T13:38:37+05:30",
+        "retrieved_via": "Crustdata /web/enrich/live",
+        "passage": "The passenger first has to write to the Customer Support team at our customer support portal (https://www.airindia.com/in/en/contact-us/customer-support-portal.html); after reviewing the grievance, the Customer Support agent will share the resolution.\nIf the passenger is not satisfied with the response of the Customer Support agent, then they can quote their grievance to the Nodal Officer, who may be contacted at nodalofficer@airindia.com.\nIf the passenger is still unsatisfied and wishes to appeal, they can lodge an appeal with our Appellate Authority at appellateauthority@airindia.com quoting their grievance.\nThe passenger can also log in to the AirSewa (https://airsewa.gov.in/#/home) portal to submit grievances.\nKindly note that for speedy redressal of your grievance, while escalating your grievance to Nodal officer or Appellate Authority, it is advisable to have a valid customer support Case ID raised at customer support portal mentioned above.\nNodal Officer: Mr. Abdesh Kumar\nE-Mail: nodalofficer@airindia.com\nAppellate Authority: Ms. Bhavna Tiwari\nE-Mail: appellateauthority@airindia.com",
+        "passage_sha256": "8f892615aef25ea0c3508da8ec1920656add7004a9a10823923377a7681798ab",
+        "contacts": {
+          "nodal_officer_email": "nodalofficer@airindia.com",
+          "appellate_authority_email": "appellateauthority@airindia.com",
+          "portal": "https://www.airindia.com/in/en/contact-us/customer-support-portal.html"
+        },
+        "named_officers_on_this_page": {
+          "nodal_officer": "Mr. Abdesh Kumar",
+          "appellate_authority": "Ms. Bhavna Tiwari"
+        },
+        "conflicts": [
+          "A search result for Air India's passenger-rights page appeared to be old; names may have changed."
+        ],
+        "advice": "Raise a customer-support Case ID first and quote it when escalating to the nodal officer or appellate authority.",
+        "official_passenger_rights_url": "https://www.airindia.com/in/en/passenger-rights.html"
+      }
+    },
+    "QP": {
+      "airline": "Akasa Air",
+      "operator_legal_name": "SNV Aviation Pvt. Ltd.",
+      "identity": {
+        "endpoint": "/company/identify",
+        "matched_on": "akasaair.com",
+        "match_type": "domain",
+        "confidence": 1.0,
+        "crustdata_company_id": 1085311,
+        "name": "Akasa Air",
+        "primary_domain": "akasaair.com",
+        "company_type_label": "Privately Held",
+        "employee_count_range": "1001-5000",
+        "retrieved_on": "2026-11-22",
+        "note": "company_type_label is Crustdata's classification and is not used in any decision."
+      },
+      "grievance": {
+        "status": "primary_blocked",
+        "source_url": "https://www.akasaair.com/customer-support/grievance-redressal-process",
+        "http_status": 403,
+        "retrieved_at": "2026-11-22T13:38:32+05:30",
+        "retrieved_via": "Crustdata /web/enrich/live",
+        "detail": "Crustdata reported success=true but the airline site returned HTTP 403 (CloudFront block), so no primary text was captured.",
+        "secondary_unverified": {
+          "source": "web search excerpt (not Crustdata, not fetched)",
+          "nodal_officer_email": "nodalofficer@akasaair.com",
+          "appellate_authority_email": "appellateauthority@akasaair.com",
+          "conflicts": [
+            "Different pages on the airline's site name different officers."
+          ]
+        },
+        "status_for_packet": "CANNOT VERIFY from primary source. Check the airline's website before sending."
+      }
+    },
+    "IX": {
+      "airline": "Air India Express",
+      "identity": {
+        "endpoint": "/company/identify",
+        "matched_on": "airindiaexpress.com",
+        "match_type": "domain",
+        "confidence": 1.0,
+        "crustdata_company_id": 22294,
+        "name": "Air India Express",
+        "primary_domain": "airindiaexpress.com",
+        "company_type_label": "Government Agency",
+        "employee_count_range": "1001-5000",
+        "retrieved_on": "2026-11-22",
+        "note": "company_type_label is Crustdata's classification and is not used in any decision."
+      },
+      "grievance": {
+        "status": "not_collected",
+        "detail": "Grievance route not collected for this airline yet. Cannot verify."
+      }
+    },
+    "SG": {
+      "airline": "SpiceJet",
+      "identity": {
+        "endpoint": "/company/identify",
+        "matched_on": "spicejet.com",
+        "match_type": "domain",
+        "confidence": 1.0,
+        "crustdata_company_id": 4701,
+        "name": "SpiceJet Limited",
+        "primary_domain": "spicejet.com",
+        "company_type_label": "Public Company",
+        "employee_count_range": "10001+",
+        "retrieved_on": "2026-11-22",
+        "note": "company_type_label is Crustdata's classification and is not used in any decision."
+      },
+      "grievance": {
+        "status": "not_collected",
+        "detail": "Grievance route not collected for this airline yet. Cannot verify."
+      }
+    },
+    "9I": {
+      "airline": "Alliance Air",
+      "identity": {
+        "endpoint": "/company/identify",
+        "matched_on": "allianceair.in",
+        "match_type": "domain",
+        "confidence": 1.0,
+        "crustdata_company_id": 1276124,
+        "name": "Alliance Air",
+        "primary_domain": "allianceair.in",
+        "company_type_label": "Government Agency",
+        "employee_count_range": "501-1000",
+        "retrieved_on": "2026-11-22",
+        "note": "company_type_label is Crustdata's classification and is not used in any decision."
+      },
+      "grievance": {
+        "status": "not_collected",
+        "detail": "Grievance route not collected for this airline yet. Cannot verify."
+      }
+    }
+  },
+  "authorities": {
+    "airsewa": {
+      "name": "AirSewa (Ministry of Civil Aviation)",
+      "url": "https://airsewa.gov.in/#/home",
+      "basis": "CAR Part IV para 3.9.2 (verified): the passenger may file the grievance on the Air Sewa app or portal."
+    }
+  }
+}

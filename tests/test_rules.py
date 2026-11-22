@@ -211,6 +211,15 @@ class RefundTests(unittest.TestCase):
         a = self.r(payment_mode="agent_portal", cancelled_at=t(mo=11, d=2), as_of=date(2026, 11, 20))  # Mon
         self.assertIn("2026-11-20", a.get("refund_timeline_breach").inputs["due_on"])  # +14 working days = Fri 20th
 
+    def test_agent_refund_between_14_and_21_working_days_goes_to_review(self):
+        base = dict(payment_mode="agent_portal", cancelled_at=t(mo=11, d=2))  # 14wd = Nov 20, 21wd = Dec 1
+        mid = self.r(refund_received_on=date(2026, 11, 25), **base)
+        self.assertEqual(mid.get("refund_timeline_breach").status, S.REVIEW_REQUIRED)
+        late = self.r(as_of=date(2026, 12, 5), **base)
+        self.assertEqual(late.get("refund_timeline_breach").status, S.SUPPORTED)
+        ok = self.r(refund_received_on=date(2026, 11, 20), **base)
+        self.assertEqual(ok.get("refund_timeline_breach").status, S.NOT_SUPPORTED)
+
     def test_statutory_fees_refund_even_if_fare_non_refundable(self):
         a = self.r(refund_received_amount=1000)
         self.assertEqual(a.get("statutory_fees_breach").status, S.SUPPORTED)

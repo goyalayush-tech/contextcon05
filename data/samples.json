@@ -1,0 +1,93 @@
+{
+  "_about": "Synthetic test cases. No real passenger, booking or flight. Used as ground truth in tests and as demo inputs.",
+  "cancel_clear_win": {
+    "title": "IndiGo cancels 3 hours before departure",
+    "expect": {"compensation": "SUPPORTED", "payable": "3650"},
+    "case_type": "cancellation",
+    "flight": {"flight_number": "6E 000", "pnr": "SAMPLE1", "origin": "DEL", "destination": "JAI", "date": "2026-11-20",
+               "marketing_carrier": "6E", "operating_carrier": "6E", "domestic": true, "block_time_hours": 1.0},
+    "facts": {
+      "scheduled_departure": {"value": "2026-11-20T17:00:00+05:30", "doc": "e-ticket.pdf", "snippet": "Departure 17:00"},
+      "informed_at": {"value": "2026-11-20T14:00:00+05:30", "doc": "airline-sms.png", "snippet": "Your flight 6E 000 is cancelled"},
+      "basic_fare": {"value": 3200, "doc": "e-ticket.pdf", "snippet": "Basic fare 3200"},
+      "fuel_charge": {"value": 450, "doc": "e-ticket.pdf", "snippet": "Fuel charge 450"},
+      "contact_info_provided": {"value": true, "doc": "booking-confirmation.pdf", "snippet": "Phone and email on booking"},
+      "extraordinary_claimed": {"value": false, "doc": "airline-sms.png", "snippet": "No reason given"},
+      "same_ticket_connection_missed": false,
+      "alt_or_refund_offered": true,
+      "alternate_accepted": false
+    }
+  },
+  "cancel_long_notice": {
+    "title": "Cancelled 20 days ahead: no compensation, refund still owed",
+    "expect": {"compensation": "NOT_SUPPORTED"},
+    "case_type": "cancellation",
+    "flight": {"flight_number": "6E 001", "origin": "BOM", "destination": "BLR", "date": "2026-12-10",
+               "marketing_carrier": "6E", "operating_carrier": "6E", "domestic": true, "block_time_hours": 1.8},
+    "facts": {
+      "scheduled_departure": "2026-12-10T09:00:00+05:30", "informed_at": "2026-11-20T09:00:00+05:30",
+      "basic_fare": 4000, "fuel_charge": 600, "contact_info_provided": true, "extraordinary_claimed": false,
+      "same_ticket_connection_missed": false, "alt_or_refund_offered": true
+    }
+  },
+  "cancel_atc_claim": {
+    "title": "Air India cites air traffic control: compensation needs review, refund duty stays",
+    "expect": {"compensation": "REVIEW_REQUIRED"},
+    "case_type": "cancellation",
+    "flight": {"flight_number": "AI 000", "origin": "DEL", "destination": "BOM", "date": "2026-11-19",
+               "marketing_carrier": "AI", "operating_carrier": "AI", "domestic": true, "block_time_hours": 2.2},
+    "facts": {
+      "scheduled_departure": "2026-11-19T08:00:00+05:30", "informed_at": "2026-11-19T06:30:00+05:30",
+      "basic_fare": 5200, "fuel_charge": 900, "contact_info_provided": true, "extraordinary_claimed": true,
+      "same_ticket_connection_missed": false, "alternate_accepted": false
+    }
+  },
+  "cancel_operating_missing": {
+    "title": "Ticket shows a travel agent, operating airline not stated",
+    "expect": {"airline": "REVIEW_REQUIRED"},
+    "case_type": "cancellation",
+    "flight": {"flight_number": "XX 000", "origin": "DEL", "destination": "GOI", "date": "2026-11-18",
+               "marketing_carrier": "AI", "domestic": true, "block_time_hours": 2.5},
+    "facts": {"scheduled_departure": "2026-11-18T12:00:00+05:30", "informed_at": "2026-11-18T10:00:00+05:30",
+              "basic_fare": 6000, "fuel_charge": 800, "contact_info_provided": true}
+  },
+  "cancel_akasa_blocked": {
+    "title": "Akasa Air cancellation: grievance page blocked, route cannot be verified",
+    "expect": {"compensation": "SUPPORTED", "airline_route": "CANNOT VERIFY"},
+    "case_type": "cancellation",
+    "flight": {"flight_number": "QP 000", "origin": "BLR", "destination": "HYD", "date": "2026-11-17",
+               "marketing_carrier": "QP", "operating_carrier": "QP", "domestic": true, "block_time_hours": 1.2},
+    "facts": {"scheduled_departure": "2026-11-17T20:00:00+05:30", "informed_at": "2026-11-17T18:00:00+05:30",
+              "basic_fare": 2800, "fuel_charge": 300, "contact_info_provided": true, "extraordinary_claimed": false,
+              "same_ticket_connection_missed": false, "alternate_accepted": false}
+  },
+  "delay_night_7h": {
+    "title": "Night flight delayed 7 hours: refund option and hotel, no cash compensation",
+    "expect": {"alt_or_refund_obligation": "SUPPORTED", "cash_compensation": "NOT_SUPPORTED"},
+    "case_type": "delay",
+    "flight": {"flight_number": "6E 002", "origin": "DEL", "destination": "CCU", "date": "2026-11-21",
+               "marketing_carrier": "6E", "operating_carrier": "6E", "domestic": true, "block_time_hours": 2.1},
+    "facts": {"scheduled_departure": "2026-11-21T22:00:00+05:30", "expected_departure": "2026-11-22T05:00:00+05:30",
+              "checked_in_on_time": true, "extraordinary_claimed": false, "accommodation_needed": true}
+  },
+  "delay_exactly_six": {
+    "title": "Delay of exactly 6 hours does not trigger the 6-hour refund option",
+    "expect": {"alt_or_refund_obligation": "NOT_SUPPORTED"},
+    "case_type": "delay",
+    "flight": {"flight_number": "6E 003", "origin": "HYD", "destination": "MAA", "date": "2026-11-21",
+               "marketing_carrier": "6E", "operating_carrier": "6E", "domestic": true, "block_time_hours": 1.3},
+    "facts": {"scheduled_departure": "2026-11-21T09:00:00+05:30", "expected_departure": "2026-11-21T15:00:00+05:30",
+              "checked_in_on_time": true, "extraordinary_claimed": false}
+  },
+  "refund_overdue_shortfall": {
+    "title": "Credit-card refund overdue and short by Rs 800",
+    "expect": {"refund_timeline_breach": "SUPPORTED", "shortfall": "800"},
+    "case_type": "refund",
+    "flight": {"flight_number": "6E 004", "origin": "DEL", "destination": "BOM", "date": "2026-11-01",
+               "marketing_carrier": "6E", "operating_carrier": "6E", "domestic": true},
+    "facts": {"initiated_by": "airline", "payment_mode": "credit_card", "cancelled_at": "2026-11-01T10:00:00+05:30",
+              "as_of": "2026-11-22", "refund_received_on": "2026-11-15", "total_paid": 5000, "basic_fare": 3000,
+              "fuel_charge": 500, "statutory_fees": 1500, "cancellation_charge_levied": 0,
+              "refund_received_amount": 4200, "refund_given_as_credit_shell": false}
+  }
+}

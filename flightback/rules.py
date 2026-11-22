@@ -473,7 +473,27 @@ def assess_refund(f: RefundFacts) -> Assessment:
                            missing=["cancellation date", "payment mode and booking channel"]))
     else:
         inputs = {"cancelled_at": _fmt(f.cancelled_at), "payment_mode": f.payment_mode, "due_on": due.isoformat()}
-        if f.refund_received_on:
+        if f.payment_mode == "agent_portal":
+            # 14 working days is UNVERIFIED (2026 revision, news only); the older primary text says 21.
+            older = add_working_days(f.cancelled_at.date(), 21)
+            inputs["due_on_older_verified_text"] = older.isoformat()
+            when = f.refund_received_on or f.as_of
+            if when is None:
+                conds.append(_cond("refund_timeline_breach", "3(c)", "Refund paid late", Status.UNKNOWN,
+                                   "Need the refund receipt date or today's date.", inputs, ["refund received date"]))
+            elif when > older:
+                conds.append(_cond("refund_timeline_breach", "3(c)", "Refund paid late", Status.SUPPORTED,
+                                   f"Later than {older} (21 working days, the older verified text) and so also later "
+                                   f"than the 2026 figure of 14 working days ({due}).", inputs))
+            elif when > due:
+                conds.append(_cond("refund_timeline_breach", "3(c)", "Refund paid late", Status.REVIEW_REQUIRED,
+                                   f"Later than {due} (14 working days, 2026 revision, UNVERIFIED) but not later than "
+                                   f"{older} (21 working days, older verified text). Confirm the current Part II "
+                                   "text before claiming this is late.", inputs))
+            else:
+                conds.append(_cond("refund_timeline_breach", "3(c)", "Refund paid late", Status.NOT_SUPPORTED,
+                                   f"Within 14 working days ({due}).", inputs))
+        elif f.refund_received_on:
             late = f.refund_received_on > due
             conds.append(_cond("refund_timeline_breach", "3(a)-(c)", "Refund paid late",
                                Status.SUPPORTED if late else Status.NOT_SUPPORTED,
