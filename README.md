@@ -41,6 +41,14 @@ cp .env.example .env            # add CRUSTDATA_API_KEY (optional: without it th
 # open http://localhost:8000 and pick a synthetic example
 ```
 
+The UI is a React 19 + Vite + Tailwind v4 + shadcn/ui app in `frontend/`, built into `flightback/static/dist` and committed, so Python alone serves it (no Node needed to run). To change it:
+
+```bash
+cd frontend && npm install && npm run build      # or `npm run dev` (proxies /api to :8000)
+```
+
+If `static/dist` is missing, FastAPI falls back to the single-file `static/index.html`.
+
 Tests (127): `.venv/bin/python -m unittest discover -s tests -t .` — no credits used; the Crustdata client is tested with a fake transport.
 
 ## How it works

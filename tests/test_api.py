@@ -223,6 +223,21 @@ class LiveCasePathTests(unittest.TestCase):
         self.assertEqual(r["evidence_run"]["mode"], "snapshot_only")
         self.assertIn("identity only", r["evidence_run"]["reason"])
 
+    def test_root_serves_the_ui_and_the_built_assets_it_references(self):
+        r = self.c.get("/")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("text/html", r.headers["content-type"])
+        dist = ROOT / "flightback" / "static" / "dist"
+        if (dist / "assets").is_dir():  # the React build is committed; every asset the page names must be served
+            import re
+            for path in re.findall(r'(?:src|href)="(/assets/[^"]+)"', r.text):
+                self.assertEqual(self.c.get(path).status_code, 200, path)
+
+    def test_latest_leads_are_labelled_and_never_proof(self):
+        r = self.c.get("/api/leads?limit=3").json()
+        self.assertEqual(r["label"], "LEAD, NOT PROOF")
+        self.assertLessEqual(len(r["items"]), 3)
+
     def test_freshness_lists_every_airline_with_age_and_leads(self):
         f = self.c.get("/api/freshness").json()
         self.assertEqual(len(f["airlines"]), 6)

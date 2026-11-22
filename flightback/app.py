@@ -10,14 +10,15 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from .env import load_env
 
 load_env()
 
-from . import watcher
+from . import documents, watcher
 from .airlines import SOURCES, merge_grievance, refresh_airline
 from .crustdata import RATE_LIMITS, Crustdata, CrustdataError, RateLimiter
 from .evidence_run import has_live_source, run_for_case, snapshot_only
@@ -132,6 +133,23 @@ def extract(body: dict = Body(...)):
     if len(text) > 20000:
         raise HTTPException(413, "Paste at most 20,000 characters")
     return suggest(text)
+
+
+@app.get("/api/documents/capabilities")
+def document_capabilities():
+    """Whether this server can OCR scans and photos, or only read PDFs that have a text layer."""
+    return documents.capabilities()
+
+
+@app.post("/api/documents")
+def upload_document(file: UploadFile = File(...)):
+    """Read an e-ticket, airline email (as PDF) or screenshot: text layer first, OCR for scans and images. Returns
+    fact suggestions with page, quote, method and confidence. The file is not stored; only its SHA-256 is returned."""
+    data = file.file.read(documents.MAX_BYTES + 1)  # read one byte past the limit to detect oversize files
+    try:
+        return documents.suggest_from_document(file.filename or "uploaded document", data)
+    except documents.DocumentError as e:
+        raise HTTPException(e.status, str(e))
 
 
 @app.get("/api/rules")
@@ -300,6 +318,12 @@ def leads_refresh(code: str):
             "spent": cd.spent, "remaining": cd.remaining}
 
 
+@app.get("/api/leads")
+def leads_latest(limit: int = 8):
+    """Newest precedent leads across airlines. Every item is labelled LEAD, NOT PROOF."""
+    return {"label": "LEAD, NOT PROOF", "items": store.leads_latest(max(1, min(limit, 50)))}
+
+
 @app.get("/api/freshness")
 def freshness():
     """One row per airline: how old the evidence is, what is verified, how many leads, plus the watch."""
@@ -337,6 +361,18 @@ def set_ceiling(body: dict = Body(...)):
     return {"ceiling": cd.ceiling, "spent": cd.spent, "remaining": cd.remaining}
 
 
+DIST = STATIC / "dist"  # the React build (frontend/ -> npm run build). Without it, the single-file fallback UI is served.
+if (DIST / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
+    app.mount("/fonts", StaticFiles(directory=DIST / "fonts"), name="fonts")
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon():
+    return FileResponse(DIST / "favicon.svg")
+
+
 @app.get("/")
 def index():
-    return FileResponse(STATIC / "index.html")
+    built = DIST / "index.html"
+    return FileResponse(built if built.is_file() else STATIC / "index.html")

@@ -1,0 +1,91 @@
+@font-face{font-family:"Archivo";font-style:normal;font-weight:100 900;font-stretch:100%;font-display:swap;src:url(/fonts/archivo-vietnamese.woff2) format("woff2");unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:"Archivo";font-style:normal;font-weight:100 900;font-stretch:100%;font-display:swap;src:url(/fonts/archivo-latin-ext.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Archivo";font-style:normal;font-weight:100 900;font-stretch:100%;font-display:swap;src:url(/fonts/archivo-latin.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-review: var(--review);
+  --color-review-soft: var(--review-soft);
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --color-accent-600: var(--accent-600);
+  --color-accent-700: var(--accent-700);
+  --color-surface: var(--surface);
+  --color-divider: var(--divider);
+}
+
+:root {
+  --radius: 0px;
+  --background: #f3f2f2;
+  --foreground: #201e1d;
+  --card: #eae9e9;
+  --card-foreground: #201e1d;
+  --popover: #f3f2f2;
+  --popover-foreground: #201e1d;
+  --primary: #ec3013;
+  --primary-foreground: #f3f2f2;
+  --secondary: #eae9e9;
+  --secondary-foreground: #201e1d;
+  --muted: #eae9e9;
+  --muted-foreground: color-mix(in srgb, #201e1d 60%, transparent);
+  --accent: #ffe0d9;
+  --accent-foreground: #7c1405;
+  --destructive: #ae1800;
+  --border: color-mix(in srgb, #201e1d 40%, transparent);
+  --input: color-mix(in srgb, #201e1d 40%, transparent);
+  --ring: #ec3013;
+  --ok: #7c1405;
+  --ok-soft: #ffe0d9;
+  --bad: #ae1800;
+  --bad-soft: #fff2ef;
+  --warn: #444141;
+  --warn-soft: #f8f4f4;
+  --review: #ae1800;
+  --review-soft: #fff2ef;
+  --accent-600: #dd2b0f;
+  --accent-700: #ae1800;
+  --surface: #eae9e9;
+  --divider: color-mix(in srgb, #201e1d 40%, transparent);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { scroll-behavior: smooth; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  ::selection { background: color-mix(in srgb, #ec3013 30%, transparent); }
+  h1,h2,h3,h4 { font-family: var(--font-heading); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+  body { @apply bg-background text-foreground antialiased; font-size: 15px; line-height: 1.55; }
+}
+

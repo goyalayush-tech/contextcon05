@@ -38,9 +38,15 @@ def _unwrap(raw: dict) -> tuple[dict, list]:
     for name, item in raw.items():
         if isinstance(item, dict) and "value" in item:
             values[name] = item["value"]
-            index.append({"fact": name, "value": item["value"], "doc": item.get("doc"),
-                          "snippet": item.get("snippet"),
-                          "provenance": "document" if item.get("doc") else "stated by passenger, no document"})
+            entry = {"fact": name, "value": item["value"], "doc": item.get("doc"), "snippet": item.get("snippet"),
+                     "provenance": "document" if item.get("doc") else "stated by passenger, no document"}
+            # From an uploaded document: where in it, how it was read, and which exact file (by hash).
+            for k in ("page", "method", "confidence", "doc_sha256"):
+                if item.get(k) is not None:
+                    entry[k] = item[k]
+            if item.get("method") == "ocr":
+                entry["provenance"] = "document (OCR, confirmed by passenger)"
+            index.append(entry)
         else:
             values[name] = item
             index.append({"fact": name, "value": item, "doc": None, "snippet": None,

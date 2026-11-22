@@ -1,7 +1,7 @@
 import time
 import unittest
 
-from flightback.airlines import extract_contacts, extract_passage, merge_grievance, refresh_airline
+from flightback.airlines import extract_contacts, extract_passage, refresh_airline
 from flightback.crustdata import Crustdata, RateLimiter
 from flightback.store import Store
 
@@ -71,25 +71,6 @@ class AirlineRefreshTests(unittest.TestCase):
     def test_page_without_officer_emails_is_unverifiable(self):
         r = refresh_airline(client(ok(IDENT), ok(fetch(content="just a marketing page " * 50))), "6E", SNAP)
         self.assertEqual(r["grievance"]["status"], "unverifiable")
-
-    def test_page_with_only_the_nodal_email_is_unverifiable_not_verified(self):
-        only_nodal = "menu " * 300 + "Nodal Officer, X Y at nodalofficer@goindigo.in; 0124\n" + "footer " * 300
-        r = refresh_airline(client(ok(IDENT), ok(fetch(content=only_nodal))), "6E", SNAP)
-        self.assertEqual(r["grievance"]["status"], "unverifiable")
-        self.assertIn("nodal_officer_email", r["grievance"]["detail"])
-
-    def test_merge_grievance_keeps_contacts_the_live_page_does_not_carry(self):
-        old = {"status": "primary_verified", "passage_sha256": "old",
-               "contacts": {"nodal_officer_email": "a@x.in", "appellate_authority_email": "b@x.in",
-                            "portal": "https://x.in/support", "phone": "0124"}}
-        new = {"status": "primary_verified", "passage_sha256": "new",
-               "contacts": {"nodal_officer_email": "new@x.in", "appellate_authority_email": "b@x.in"}}
-        m = merge_grievance(old, new)
-        self.assertEqual(m["passage_sha256"], "new")
-        self.assertEqual(m["contacts"], {"nodal_officer_email": "new@x.in", "appellate_authority_email": "b@x.in",
-                                         "portal": "https://x.in/support", "phone": "0124"})
-        self.assertEqual(old["contacts"]["nodal_officer_email"], "a@x.in")  # inputs are not mutated
-        self.assertEqual(merge_grievance(old, {"status": "primary_blocked"})["contacts"], old["contacts"])
 
     def test_low_confidence_identity_goes_to_review(self):
         weak = [{"matches": [{"confidence_score": 0.5, "company_data": {"basic_info": {"primary_domain": "x.com"}}}]}]

@@ -264,6 +264,13 @@ class Store:
                  "publisher": r["publisher"], "matched": json.loads(r["matched"]), "via": r["via"],
                  "label": "LEAD, NOT PROOF"} for r in rows if safe_url(r["url"])]
 
+    def leads_latest(self, limit: int = 8) -> list[dict]:
+        with self._lock:
+            rows = self._db.execute("SELECT * FROM leads ORDER BY published DESC, seen_at DESC LIMIT ?", (limit,)).fetchall()
+        return [{"code": r["code"], "title": r["title"], "url": r["url"], "published": r["published"],
+                 "publisher": r["publisher"], "matched": json.loads(r["matched"]), "via": r["via"],
+                 "label": "LEAD, NOT PROOF"} for r in rows]
+
     def leads_count(self, code: str) -> int:
         with self._lock:
             return self._db.execute("SELECT COUNT(*) c FROM leads WHERE code=?", (code,)).fetchone()["c"]

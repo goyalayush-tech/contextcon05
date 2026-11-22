@@ -181,3 +181,7 @@ cython_debug/
 .cursorindexingignoreflightback.db
 *.db
 .claude/
+
+# The React source (frontend/src/lib) and its production build (served by FastAPI) must be tracked.
+!frontend/src/lib/
+!flightback/static/dist/
