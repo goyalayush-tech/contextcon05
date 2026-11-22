@@ -4,13 +4,13 @@ import { cn } from "@/lib/utils"
 import { Slot } from "radix-ui"
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 font-heading text-sm font-extrabold whitespace-nowrap transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md font-heading text-sm font-bold whitespace-nowrap transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-accent-600 active:bg-accent-700",
-        secondary: "border border-border bg-transparent text-foreground hover:bg-foreground/7 active:bg-foreground/14",
-        outline: "border-2 border-foreground bg-transparent text-foreground hover:bg-foreground hover:text-background",
+        secondary: "border border-input bg-card text-foreground hover:bg-secondary active:bg-foreground/10",
+        outline: "border border-foreground/80 bg-transparent text-foreground hover:bg-foreground hover:text-background",
         ghost: "text-primary hover:bg-primary/10 active:bg-primary/20",
         destructive: "bg-destructive text-white hover:bg-destructive/90",
         link: "text-primary underline underline-offset-4",

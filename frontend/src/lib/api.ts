@@ -43,7 +43,30 @@ export interface CasePacket {
   evidence_run: any
   leads: { label: string; note: string; items: Lead[] }
   approval: { state: string; approved_at?: number | null }
-  followups?: { ts: number; kind: string; data: any }[]
+  followups: { ts: number; kind: string; data: any }[]
+  next_step: string
+  created_at: number
+  generated_draft: string
+  draft_edited: boolean
+  draft_updated_at?: number | null
+  approval_withdrawn?: boolean
+}
+
+/** One row of GET /api/cases. */
+export interface CaseSummary {
+  case_id: string
+  created_at: number
+  case_type: CaseKind
+  flight_number?: string
+  origin?: string
+  destination?: string
+  date?: string
+  airline?: string | null
+  payable_compensation?: string | null
+  shortfall?: string | null
+  status_counts: Record<string, number>
+  approval: string
+  followups: number
 }
 
 export interface Lead {
@@ -62,8 +85,11 @@ export async function api<T = any>(path: string, init?: RequestInit): Promise<T>
   return j as T
 }
 
-export const post = <T = any>(path: string, body: unknown = {}) =>
-  api<T>(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+const json = (method: string, body: unknown) =>
+  ({ method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }) as RequestInit
+
+export const post = <T = any>(path: string, body: unknown = {}) => api<T>(path, json('POST', body))
+export const put = <T = any>(path: string, body: unknown = {}) => api<T>(path, json('PUT', body))
 
 export const inr = (n: number | string | null | undefined) =>
   n == null ? '—' : 'Rs ' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })

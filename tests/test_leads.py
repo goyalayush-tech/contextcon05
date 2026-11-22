@@ -50,6 +50,7 @@ class LeadTests(unittest.TestCase):
                "matched": ["refund"], "via": "t"}
         s.leads_add([bad])  # e.g. a row saved before the filter existed
         self.assertEqual(s.leads_for("6E"), [])
+        self.assertEqual(s.leads_latest(), [])  # the cross-airline feed applies the same filter
 
     def test_news_from_enrich_handles_empty(self):
         self.assertEqual(news_from_enrich([]), [])

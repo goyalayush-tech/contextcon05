@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import os
 import typing
@@ -11,7 +12,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import Body, FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from .env import load_env
@@ -187,15 +188,52 @@ def create_case(payload: dict = Body(...), live: bool = True):
             ev = {**ev, "airlines": {**ev["airlines"], code: record}}
     packet = build_case(payload, ev, evidence_run=run, leads=store.leads_for(code) if code else [])
     store.case_save(packet["case_id"], packet)
-    return store.case_get(packet["case_id"])
+    return load_case(packet["case_id"])
+
+
+def load_case(case_id: str) -> dict:
+    """The stored case as the UI needs it: packet, approval, follow-ups and the advised next step."""
+    c = store.case_get(case_id)
+    if not c:
+        raise HTTPException(404, "unknown case")
+    c["next_step"] = next_step(c)
+    return c
+
+
+def _sha(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+@app.get("/api/cases")
+def list_cases(limit: int = 20):
+    """Recent cases, newest first, for the case list."""
+    return store.cases_list(max(1, min(limit, 100)))
 
 
 @app.get("/api/case/{case_id}")
 def get_case(case_id: str):
-    c = store.case_get(case_id)
-    if not c:
-        raise HTTPException(404, "unknown case")
-    return c
+    return load_case(case_id)
+
+
+@app.put("/api/case/{case_id}/draft")
+def save_draft(case_id: str, body: dict = Body(...)):
+    """Save the passenger's edits to the complaint draft. `text: null` restores the generated draft. Approval covers
+    one exact text, so changing an approved draft withdraws the approval until the passenger approves again."""
+    case = load_case(case_id)
+    text = body.get("text")
+    if text is not None:
+        text = str(text)
+        if not text.strip():
+            raise HTTPException(422, "The draft cannot be empty. Restore the generated draft instead.")
+        if len(text) > 20000:
+            raise HTTPException(413, "The draft can be at most 20,000 characters.")
+        if text == case["generated_draft"]:
+            text = None  # identical to the generated draft: store nothing
+    effective = text if text is not None else case["generated_draft"]
+    revoked = store.case_set_draft(case_id, text, _sha(effective))
+    out = load_case(case_id)
+    out["approval_withdrawn"] = revoked
+    return out
 
 
 @app.post("/api/case/{case_id}/approve")
@@ -208,7 +246,7 @@ def approve(case_id: str, body: dict = Body(default={})):
         raise HTTPException(409, "The airline's contact details changed since the snapshot: "
                                  + "; ".join(run.get("changes", [])) + ". Confirm them on the airline's website, then "
                                  "approve again with acknowledge_contact_change=true.")
-    first = store.case_approve(case_id)
+    first = store.case_approve(case_id, _sha(case["complaint_draft"]))
     return {"approved": True, "first_time": first, "sent": False,
             "note": "Approval records your consent only. FLIGHTBACK never sends anything; submit through the airline or AirSewa."}
 
@@ -250,8 +288,8 @@ def followup(case_id: str, body: dict = Body(...)):
     if kind not in ("complaint_submitted", "airline_response", "airline_rejection", "refund_received"):
         raise HTTPException(422, "kind must be complaint_submitted, airline_response, airline_rejection or refund_received")
     added = store.followup_add(case_id, kind, body.get("data", {}))
-    case = store.case_get(case_id)
-    return {"recorded": added, "duplicate_ignored": not added, "next_step": next_step(case), "followups": case["followups"]}
+    case = load_case(case_id)
+    return {"recorded": added, "duplicate_ignored": not added, "next_step": case["next_step"], "followups": case["followups"]}
 
 
 @app.post("/api/airline/{code}/refresh")
@@ -361,18 +399,27 @@ def set_ceiling(body: dict = Body(...)):
     return {"ceiling": cd.ceiling, "spent": cd.spent, "remaining": cd.remaining}
 
 
-DIST = STATIC / "dist"  # the React build (frontend/ -> npm run build). Without it, the single-file fallback UI is served.
+DIST = STATIC / "dist"  # the React build: cd frontend && npm run build
+
+
+def _ui_missing() -> HTMLResponse:
+    return HTMLResponse("<h1>FLIGHTBACK</h1><p>The web UI is not built. Run <code>cd frontend && npm install && "
+                        "npm run build</code>, then reload. The API is available under <code>/api</code>.</p>", 503)
+
+
 if (DIST / "assets").is_dir():
     app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
+if (DIST / "fonts").is_dir():
     app.mount("/fonts", StaticFiles(directory=DIST / "fonts"), name="fonts")
 
 
-@app.get("/favicon.svg", include_in_schema=False)
-def favicon():
-    return FileResponse(DIST / "favicon.svg")
-
-
-@app.get("/")
-def index():
-    built = DIST / "index.html"
-    return FileResponse(built if built.is_file() else STATIC / "index.html")
+@app.get("/{path:path}", include_in_schema=False)
+def spa(path: str):
+    """Serve the web app for every page URL (/, /new, /cases, /case/FB-..., /sources); unknown /api paths stay 404."""
+    if path.startswith("api/"):
+        raise HTTPException(404, "Not Found")
+    file = (DIST / path).resolve()
+    if path and file.is_file() and DIST.resolve() in file.parents:  # top-level files such as favicon.svg
+        return FileResponse(file)
+    index = DIST / "index.html"
+    return FileResponse(index) if index.is_file() else _ui_missing()

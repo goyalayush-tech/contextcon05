@@ -58,4 +58,4 @@ export function buildPayload(kind: CaseKind, fields: SchemaField[], flight: Flig
   return { case_type: kind, flight: fl, facts: out }
 }
 
-export const caseRef = (id: string) => id.replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase()
+export const caseRef = (id: string) => id.replace(/^FB-/i, '').replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase()

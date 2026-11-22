@@ -2,7 +2,7 @@
 
 ```mermaid
 flowchart LR
-  P[Passenger] --> UI[React + shadcn UI<br/>5-step wizard, facts + source quotes]
+  P[Passenger] --> UI[React web app<br/>home, intake, case pages, sources]
   UI --> API[FastAPI]
   API --> PK[Packet builder]
   PK --> RE[Rights engine<br/>deterministic, no LLM]

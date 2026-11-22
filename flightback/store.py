@@ -92,6 +92,11 @@ class Store:
         self._db.row_factory = sqlite3.Row
         with self._lock:
             self._db.executescript(SCHEMA)
+            # Columns added after the first release: add them to an existing database instead of failing.
+            have = {r["name"] for r in self._db.execute("PRAGMA table_info(cases)")}
+            for col in ("draft TEXT", "draft_updated_at REAL", "approved_draft_sha TEXT"):
+                if col.split()[0] not in have:
+                    self._db.execute(f"ALTER TABLE cases ADD COLUMN {col}")
             self._db.commit()
 
     # -- cache ---------------------------------------------------------
@@ -181,19 +186,59 @@ class Store:
         if not row:
             return None
         packet = json.loads(row["packet"])
+        packet["created_at"] = row["created_at"]
+        # The generated draft is kept as written; the passenger's edited version, if any, is what they approve.
+        packet["generated_draft"] = packet["complaint_draft"]
+        packet["draft_edited"] = row["draft"] is not None
+        if row["draft"] is not None:
+            packet["complaint_draft"] = row["draft"]
+        packet["draft_updated_at"] = row["draft_updated_at"]
         packet["approval"] = {"state": row["approval"], "approved_at": row["approved_at"],
                               "note": "Nothing is ever sent by FLIGHTBACK. Submit manually through the airline or AirSewa."}
         packet["followups"] = self.followups(case_id)
         return packet
 
-    def case_approve(self, case_id: str) -> bool:
-        """Returns True only the first time; a repeat is a no-op."""
+    def case_approve(self, case_id: str, draft_sha: Optional[str] = None) -> bool:
+        """Returns True only the first time; a repeat is a no-op. Records which draft text was approved."""
         with self._lock:
             cur = self._db.execute(
-                "UPDATE cases SET approval='approved_by_passenger', approved_at=? "
-                "WHERE case_id=? AND approval!='approved_by_passenger'", (time.time(), case_id))
+                "UPDATE cases SET approval='approved_by_passenger', approved_at=?, approved_draft_sha=? "
+                "WHERE case_id=? AND approval!='approved_by_passenger'", (time.time(), draft_sha, case_id))
             self._db.commit()
             return cur.rowcount == 1
+
+    def case_set_draft(self, case_id: str, text: Optional[str], text_sha: Optional[str]) -> bool:
+        """Save the passenger's edited draft (None restores the generated one). Approval covers one exact text: if the
+        new text differs from the approved text, the approval is withdrawn. Returns True when that happened."""
+        with self._lock:
+            row = self._db.execute("SELECT approval, approved_draft_sha FROM cases WHERE case_id=?",
+                                   (case_id,)).fetchone()
+            revoke = bool(row and row["approval"] == "approved_by_passenger" and row["approved_draft_sha"] != text_sha)
+            self._db.execute("UPDATE cases SET draft=?, draft_updated_at=? WHERE case_id=?", (text, time.time(), case_id))
+            if revoke:
+                self._db.execute("UPDATE cases SET approval='awaiting_passenger_approval', approved_at=NULL, "
+                                 "approved_draft_sha=NULL WHERE case_id=?", (case_id,))
+            self._db.commit()
+            return revoke
+
+    def cases_list(self, limit: int = 20) -> list[dict]:
+        """Newest cases first, summarised for a list view (no full packet)."""
+        with self._lock:
+            rows = self._db.execute("SELECT c.case_id, c.created_at, c.approval, c.packet, "
+                                    "(SELECT COUNT(*) FROM followups f WHERE f.case_id=c.case_id) AS n_followups "
+                                    "FROM cases c ORDER BY c.created_at DESC LIMIT ?", (limit,)).fetchall()
+        out = []
+        for r in rows:
+            p = json.loads(r["packet"])
+            fl, am = p.get("flight") or {}, p.get("amounts") or {}
+            out.append({"case_id": r["case_id"], "created_at": r["created_at"], "case_type": p.get("case_type"),
+                        "flight_number": fl.get("flight_number"), "origin": fl.get("origin"),
+                        "destination": fl.get("destination"), "date": fl.get("date"),
+                        "airline": (p.get("airline") or {}).get("code"),
+                        "payable_compensation": am.get("payable_compensation"), "shortfall": am.get("shortfall"),
+                        "status_counts": p.get("status_counts") or {}, "approval": r["approval"],
+                        "followups": r["n_followups"]})
+        return out
 
     def followup_add(self, case_id: str, kind: str, data: dict) -> bool:
         """Record a follow-up. An identical one (same kind and data) within FOLLOWUP_REPEAT_WINDOW_S of the last is a
@@ -269,7 +314,7 @@ class Store:
             rows = self._db.execute("SELECT * FROM leads ORDER BY published DESC, seen_at DESC LIMIT ?", (limit,)).fetchall()
         return [{"code": r["code"], "title": r["title"], "url": r["url"], "published": r["published"],
                  "publisher": r["publisher"], "matched": json.loads(r["matched"]), "via": r["via"],
-                 "label": "LEAD, NOT PROOF"} for r in rows]
+                 "label": "LEAD, NOT PROOF"} for r in rows if safe_url(r["url"])]
 
     def leads_count(self, code: str) -> int:
         with self._lock:

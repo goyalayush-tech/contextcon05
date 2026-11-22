@@ -28,7 +28,7 @@ of messages to a complete, evidence-backed case, then waits for the passenger's 
 | Crustdata watch on the six airlines (company news added, pull-only) feeding "LEAD, NOT PROOF" precedent leads; freshness board | Built. Watch #57487 created and its baseline read on 22 Nov 2026 (0 credits). It cannot see grievance-page text, so contact changes come from the Web Fetch hash check |
 | Airline identity and grievance route through Crustdata | Live refresh run on 22 Nov 2026: IndiGo and Air India verified from the airline's own page (contacts unchanged vs the snapshot); Akasa Air blocked (HTTP 403) and reported as CANNOT VERIFY; a repeat call is served from cache for 0 credits. Dated snapshot committed for offline replay |
 | Complaint draft, escalation route, passenger approval gate, follow-up tracking with next-step advice | Built. Approval and follow-ups are idempotent and persisted |
-| Document upload and OCR | **Not built.** Facts are entered with the document and quote each came from |
+| Document upload and OCR | Built. PDF, PNG or JPEG up to 10 MB / 20 pages. Text-layer PDFs are read directly; scans and photos are OCR'd (tesseract) with a per-page confidence, and low-confidence pages are flagged. Each suggestion carries its page, quote and method; the passenger confirms it, and the evidence index records the page, method and the file's SHA-256. The file itself is not stored |
 | Flight-status data (actual departure and arrival) | **Not built.** No Crustdata endpoint provides it, so the passenger supplies it |
 | International flights, denied boarding, downgrading | Out of scope, reported as NOT_APPLICABLE |
 
@@ -36,9 +36,10 @@ of messages to a complete, evidence-backed case, then waits for the passenger's 
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt httpx
+brew install tesseract poppler  # optional: OCR for scans and photos (PDFs with a text layer work without it)
 cp .env.example .env            # add CRUSTDATA_API_KEY (optional: without it the app replays the dated snapshot)
 .venv/bin/uvicorn flightback.app:app --port 8000
-# open http://localhost:8000 and pick a synthetic example
+# open http://localhost:8000: start a case, or try one of the synthetic examples on the home page
 ```
 
 The UI is a React 19 + Vite + Tailwind v4 + shadcn/ui app in `frontend/`, built into `flightback/static/dist` and committed, so Python alone serves it (no Node needed to run). To change it:
@@ -47,9 +48,15 @@ The UI is a React 19 + Vite + Tailwind v4 + shadcn/ui app in `frontend/`, built 
 cd frontend && npm install && npm run build      # or `npm run dev` (proxies /api to :8000)
 ```
 
-If `static/dist` is missing, FastAPI falls back to the single-file `static/index.html`.
+Pages: `/` (home, recent cases), `/new` (intake), `/case/<id>` with `/complaint` and `/followup` tabs, `/cases`, `/sources`.
+Every page has its own URL and loads from the API, so refresh, back/forward and shared links work. FastAPI serves
+`index.html` for every page URL; if `static/dist` is missing it says how to build it.
 
-Tests (127): `.venv/bin/python -m unittest discover -s tests -t .` — no credits used; the Crustdata client is tested with a fake transport.
+Case API used by the UI: `POST /api/case`, `GET /api/cases`, `GET /api/case/<id>` (includes the advised `next_step`),
+`PUT /api/case/<id>/draft` (save the passenger's edits; changing an approved draft withdraws the approval),
+`POST /api/case/<id>/approve`, `POST /api/case/<id>/followup`, `POST /api/documents` (upload and OCR).
+
+Tests (150): `.venv/bin/python -m unittest discover -s tests -t .` — no credits used; the Crustdata client is tested with a fake transport.
 
 ## How it works
 
@@ -95,7 +102,7 @@ Full record: [docs/rule-verification.md](docs/rule-verification.md).
 
 ## What it could do next
 
-- Document intake with OCR, writing each extracted value with its page and snippet straight into the evidence index.
+- OCR in Hindi and other Indian languages (tesseract language packs), and table-aware reading of fare break-ups.
 - A flight-data provider for actual departure and arrival times.
 - Rule packs for denied boarding (CAR 3.2), downgrading (3.5) and EU/UK 261 for international flights.
 - Webhook delivery for the watch so leads arrive without a manual "Pull new leads".
