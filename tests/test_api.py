@@ -12,7 +12,7 @@ except Exception:  # fastapi/httpx not installed: run these with the project ven
 ROOT = Path(__file__).resolve().parent.parent
 DB = os.path.join(tempfile.mkdtemp(), "t.db")
 os.environ["FLIGHTBACK_DB"] = DB
-os.environ.pop("CRUSTDATA_API_KEY", None)
+os.environ["CRUSTDATA_API_KEY"] = ""  # empty (not absent) so .env is never loaded into tests
 
 
 @unittest.skipIf(TestClient is None, "needs fastapi + httpx (use .venv/bin/python)")

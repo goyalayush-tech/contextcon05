@@ -24,7 +24,7 @@ of messages to a complete, evidence-backed case, then waits for the passenger's 
 | Delay assessment (CAR Part IV 3.4): meal thresholds by block time, "more than 6 hours" with the right baseline, night-flight hotel rule, no invented cash compensation | Built, tested at every boundary |
 | Refund assessment (CAR Part II): timelines by payment mode, statutory taxes and fees, charge cap, credit-shell consent, 48-hour look-in, shortfall | Built. **Rule pack not fully verified, and says so on every refund case** |
 | Operating-airline resolution (marketing vs operating carrier) | Built |
-| Airline identity and grievance route through Crustdata | Dated snapshot committed; live refresh built and tested against a fake transport |
+| Airline identity and grievance route through Crustdata | Live refresh run on 22 Nov 2026: IndiGo and Air India verified from the airline's own page (contacts unchanged vs the snapshot); Akasa Air blocked (HTTP 403) and reported as CANNOT VERIFY; a repeat call is served from cache for 0 credits. Dated snapshot committed for offline replay |
 | Complaint draft, escalation route, passenger approval gate, follow-up tracking with next-step advice | Built. Approval and follow-ups are idempotent and persisted |
 | Document upload and OCR | **Not built.** Facts are entered with the document and quote each came from |
 | Flight-status data (actual departure and arrival) | **Not built.** No Crustdata endpoint provides it, so the passenger supplies it |
@@ -39,7 +39,7 @@ cp .env.example .env            # add CRUSTDATA_API_KEY (optional: without it th
 # open http://localhost:8000 and pick a synthetic example
 ```
 
-Tests (78): `.venv/bin/python -m unittest discover -s tests -t .` — no credits used; the Crustdata client is tested with a fake transport.
+Tests (90): `.venv/bin/python -m unittest discover -s tests -t .` — no credits used; the Crustdata client is tested with a fake transport.
 
 ## How it works
 
@@ -76,6 +76,7 @@ Full record: [docs/rule-verification.md](docs/rule-verification.md).
 - Crustdata **Web Search ignores the `site:` filter** and returns redirect links. Airline pages are therefore found by known official domain, not by search.
 - **`success: true` does not mean the page loaded.** Akasa Air's page returned HTTP 403 inside a "successful" response. The client trusts `http_status`; Akasa is recorded as "CANNOT VERIFY" and the packet says so.
 - Crustdata's company-type label for some airlines looks wrong or stale (Air India shows "Government Agency"). It is not used in any decision.
+- A live Air India fetch hit a 60 s read timeout and surfaced as an unhandled 500. The client now retries network errors twice, logs the failure in the ledger and raises a typed error; the refresh reports `error` instead of crashing.
 - An earlier idea to treat Crustdata as a source of flight facts was dropped: it cannot confirm a PNR, a departure time or a refund.
 
 ## What it could do next

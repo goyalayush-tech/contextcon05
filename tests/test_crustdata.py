@@ -107,6 +107,35 @@ class ClientTests(unittest.TestCase):
         with self.assertRaises(EndpointDisabled):
             cd.job_search({"a": 2}, limit=1)
 
+    def test_network_timeout_is_retried_then_succeeds(self):
+        calls = {"n": 0}
+
+        def flaky(url, headers, body):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise TimeoutError("read timed out")
+            return ok()
+
+        cd, clock, _ = make([])
+        cd.transport = flaky
+        r = cd.job_search({"a": 1}, limit=5)
+        self.assertFalse(r.cached)
+        self.assertEqual(calls["n"], 3)
+        self.assertEqual(cd.spent, 0.15)  # only the successful call is charged
+
+    def test_persistent_network_failure_is_a_typed_error_and_logged(self):
+        from flightback.crustdata import CrustdataError
+
+        def dead(url, headers, body):
+            raise TimeoutError("read timed out")
+
+        cd, _, store = make([])
+        cd.transport = dead
+        with self.assertRaises(CrustdataError):
+            cd.job_search({"a": 1}, limit=5)
+        self.assertEqual(store.ledger_rows("run1")[-1]["status"], "error")
+        self.assertEqual(cd.spent, 0.0)
+
     def test_estimates(self):
         self.assertEqual(estimate_cost("/job/search", {"limit": 100}), 3.0)
         self.assertEqual(estimate_cost("/company/enrich", {}), 2.0)

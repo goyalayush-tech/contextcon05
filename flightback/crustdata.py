@@ -111,7 +111,7 @@ class RateLimiter:
             waited += wait
 
 
-def _http_post(url: str, headers: dict, body: dict, timeout: float = 60):
+def _http_post(url: str, headers: dict, body: dict, timeout: float = 120):
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -183,7 +183,15 @@ class Crustdata:
         attempt = 0
         while True:
             self.limiter.acquire(group)
-            status, resp_headers, payload = self.transport(BASE_URL + path, headers, body)
+            try:
+                status, resp_headers, payload = self.transport(BASE_URL + path, headers, body)
+            except (TimeoutError, ConnectionError, urllib.error.URLError, OSError) as e:
+                if attempt < 2:  # network trouble: retry twice with backoff before giving up
+                    attempt += 1
+                    self.limiter.sleep(2 ** attempt)
+                    continue
+                self._log_error(path, key, None, f"network error after retries: {type(e).__name__}")
+                raise CrustdataError(f"{path} failed after retries: {type(e).__name__}") from e
             h = {k.lower(): v for k, v in resp_headers.items()}
             request_id = h.get("x-request-id")
 
