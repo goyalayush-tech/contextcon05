@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS runs (
 
 
 class Store:
-    def __init__(self, path: str = "scoutspend.db"):
+    def __init__(self, path: str = "flightback.db"):
         self._lock = threading.RLock()
         self._db = sqlite3.connect(path, check_same_thread=False)
         self._db.row_factory = sqlite3.Row

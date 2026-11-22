@@ -1,8 +1,8 @@
 import unittest
 
-from scoutspend.crustdata import (BudgetExceeded, CreditsExhausted, Crustdata, EndpointDisabled,
+from flightback.crustdata import (BudgetExceeded, CreditsExhausted, Crustdata, EndpointDisabled,
                                   RateLimiter, estimate_cost)
-from scoutspend.store import Store
+from flightback.store import Store
 
 
 class FakeTransport:
