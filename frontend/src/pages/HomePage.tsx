@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, BadgeCheck, FileSearch, FileText, Hand, ScanText, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, BadgeCheck, FileSearch, FileText, Hand, Plane, ScanText, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, Container, Eyebrow } from '@/components/bits'
@@ -42,46 +42,68 @@ export default function HomePage() {
 
   return (
     <>
-      <section className="border-b border-border bg-card">
-        <Container className="grid gap-10 py-14 md:grid-cols-[1.3fr_1fr] md:items-center md:py-20">
-          <div>
-            <Badge variant="default" className="mb-5">For domestic flights in India</Badge>
-            <h1 className="text-4xl leading-[1.05] md:text-6xl">Your flight went wrong. Your case, ready in minutes.</h1>
-            <p className="mt-5 max-w-xl text-lg text-muted-foreground">
-              FLIGHTBACK checks your facts against the DGCA rules, works out what the airline owes you, and drafts the complaint.
-              You stay in control: nothing is sent without you.
+      <section className="home-hero">
+        <Container className="grid gap-5 py-12 md:grid-cols-[.96fr_1.04fr] md:items-center md:gap-10 md:py-16">
+          <div className="home-hero-copy">
+            <Badge variant="default" className="home-hero-badge mb-5">For domestic flights in India</Badge>
+            <h1 className="text-4xl md:text-6xl">Your flight changed.<br /><span>Let’s find your way forward.</span></h1>
+            <p className="mt-5 max-w-xl text-base text-muted-foreground md:text-lg">
+              See which passenger rights may apply, what facts are still missing, and how to prepare a complaint—without guesswork or payout promises.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="lg"><Link to="/new">Start a case <ArrowRight /></Link></Button>
+              <Button asChild size="lg" className="home-hero-cta"><Link to="/new">Check my case <ArrowRight /></Link></Button>
               <Button asChild size="lg" variant="secondary"><Link to="/cases">My cases</Link></Button>
             </div>
-          </div>
-          <Card className="bg-background">
-            <Eyebrow className="mb-4">What you get</Eyebrow>
-            <ul className="space-y-3 text-sm">
-              {['A condition-by-condition rights check with the paragraph it applies',
-                'The compensation or refund shortfall, with its formula',
-                'The airline’s escalation route, verified from its own website',
-                'A complaint draft written from supported claims only'].map((t) => (
-                <li key={t} className="flex gap-3"><BadgeCheck className="mt-0.5 size-4 shrink-0 text-primary" /> {t}</li>
-              ))}
-            </ul>
+            <div className="home-hero-trust mt-5">
+              <span><ShieldCheck /> Rules with sources</span><i aria-hidden="true" /><span>Nothing is sent for you</span>
+            </div>
             {samples.length > 0 && (
-              <div className="mt-6 border-t border-border pt-4">
-                <div className="mb-2 text-xs font-semibold text-muted-foreground">No booking at hand? Try an example:</div>
-                <div className="flex flex-col gap-1.5">
-                  {samples.slice(0, 3).map((s) => (
+              <div className="mt-6">
+                <div className="mb-2 text-xs font-semibold text-muted-foreground">Want to see a worked example?</div>
+                <div className="flex flex-col items-start gap-1.5">
+                  {samples.slice(0, 2).map((s) => (
                     <Link key={s.key} to={`/new?sample=${s.key}`} className="text-sm font-semibold text-primary hover:underline">{s.title} →</Link>
                   ))}
                 </div>
+                <span className="mt-1 block text-[11px] text-muted-foreground">Synthetic examples only · no real passenger data</span>
               </div>
             )}
-          </Card>
+          </div>
+
+          <div className="home-hero-art" role="img" aria-label="A flight path through a sunset sky, leading to a clear case packet">
+            <div className="home-window-sky">
+              <div className="home-sun" />
+              <div className="home-cloud home-cloud-a" />
+              <div className="home-cloud home-cloud-b" />
+              <div className="home-route-caption home-route-start"><span>WHEN PLANS CHANGE</span><b>Start with your facts</b></div>
+              <div className="home-route-caption home-route-end"><span>YOUR NEXT STEP</span><b>Clear, cited, yours</b></div>
+              <svg className="home-flight-path" viewBox="0 0 520 230" fill="none" aria-hidden="true">
+                <path d="M24 194C126 34 248 47 319 125s126 86 177 6" stroke="rgba(255,255,255,.72)" strokeWidth="2" strokeDasharray="5 9" />
+                <circle cx="25" cy="193" r="5" fill="white" />
+                <circle cx="496" cy="131" r="5" fill="white" />
+                <path d="m253 53 24-8 22-20 8 2-13 22 22 7-2 5-28-3-15 17-5-1 6-20-20 5z" fill="white" />
+              </svg>
+            </div>
+            <div className="home-window-rim" aria-hidden="true" />
+            <div className="home-window-card">
+              <div className="home-window-card-head">
+                <span className="home-window-card-icon"><BadgeCheck /></span>
+                <span><small>YOUR CASE PACKET</small><b>A clearer way forward</b></span>
+                <ArrowUpRight className="home-window-card-arrow" />
+              </div>
+              <div className="home-window-checks">
+                <span><BadgeCheck /> Rule-by-rule check</span>
+                <span><FileText /> Draft for you to review</span>
+              </div>
+              <div className="home-window-note"><Plane /> You choose what happens next. Nothing is auto-submitted.</div>
+            </div>
+            <div className="home-window-seal"><span>NO</span><b>PAYOUT<br />PROMISES</b></div>
+          </div>
         </Container>
       </section>
 
       <Container>
-        <section className="py-14 md:py-20">
+        <section id="how-it-works" className="py-14 md:py-20">
           <Eyebrow className="mb-3 text-primary">How it works</Eyebrow>
           <h2 className="max-w-2xl text-3xl md:text-4xl">From a mess of messages to a complete case.</h2>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
