@@ -48,6 +48,18 @@ def extract_contacts(passage: str) -> dict:
     return out
 
 
+REQUIRED_CONTACTS = ("nodal_officer_email", "appellate_authority_email")
+
+
+def merge_grievance(old: dict, new: dict) -> dict:
+    """Overlay a refreshed grievance record on an older one. Contacts merge key by key: a live page only yields the
+    officer emails, so the older record's portal, customer email and phone must survive the refresh."""
+    merged = {**(old or {}), **new}
+    if "contacts" in new:
+        merged["contacts"] = {**((old or {}).get("contacts") or {}), **new["contacts"]}
+    return merged
+
+
 def refresh_airline(cd: Crustdata, code: str, snapshot: dict) -> dict:
     """Re-collect identity and grievance route for one airline. Never raises for data problems; returns a status."""
     src = SOURCES.get(code)
@@ -95,9 +107,12 @@ def refresh_airline(cd: Crustdata, code: str, snapshot: dict) -> dict:
                 else:
                     passage = extract_passage(item["content"])
                     contacts = extract_contacts(passage) if passage else {}
-                    if not passage or not contacts:
+                    missing = [k for k in REQUIRED_CONTACTS if k not in contacts]
+                    if not passage or missing:
+                        found = f" Found only: {', '.join(sorted(contacts))}." if contacts else ""
                         result["grievance"] = {**base, "status": "unverifiable",
-                                               "detail": "Page fetched but no nodal officer / appellate authority emails found.",
+                                               "detail": "Page fetched but the nodal officer and appellate authority "
+                                                         f"emails were not both found.{found}",
                                                "status_for_packet": "CANNOT VERIFY from primary source."}
                     else:
                         result["grievance"] = {**base, "status": "primary_verified", "passage": passage,

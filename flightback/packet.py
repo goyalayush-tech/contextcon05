@@ -10,10 +10,10 @@ import hashlib
 import json
 from dataclasses import asdict, fields, is_dataclass
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, get_args, get_type_hints
 
 from .rules import (Assessment, CancellationFacts, DelayFacts, RefundFacts, Status, assess_cancellation,
                     assess_delay, assess_refund)
@@ -59,6 +59,25 @@ def _coerce(name: str, v: Any) -> Any:
     return v
 
 
+def _number_fields(cls) -> set:
+    return {name for name, tp in get_type_hints(cls).items() if Decimal in get_args(tp)}
+
+
+def _check_number(name: str, v: Any) -> Any:
+    """Amounts and hours must be finite numbers. A bad value is the passenger's input error (422), not a crash."""
+    if v is None:
+        return v
+    try:
+        if isinstance(v, bool):
+            raise InvalidOperation
+        d = Decimal(str(v).strip())
+        if not d.is_finite():
+            raise InvalidOperation
+    except (InvalidOperation, ValueError):
+        raise ValueError(f"{name.replace('_', ' ')} must be a number, got {v!r}") from None
+    return v
+
+
 def jsonable(o: Any) -> Any:
     if isinstance(o, Enum):
         return o.value
@@ -100,8 +119,10 @@ def _route(airline: dict) -> list[dict]:
     if rec:
         g = rec["grievance"]
         name = rec["airline"]
-        if g["status"] == "primary_verified":
-            c = g["contacts"]
+        c = g.get("contacts") or {}
+        # A record missing either officer email (e.g. saved before that was enforced) is not a usable route.
+        if g["status"] == "primary_verified" and all(c.get(k) for k in ("nodal_officer_email",
+                                                                          "appellate_authority_email")):
             steps.append({"step": 1, "to": f"{name} customer support",
                           "how": c.get("portal") or c.get("customer_email") or "airline customer support",
                           "note": g.get("advice", "Write first and keep the reference number it issues (CAR 3.10.5).")})
@@ -223,10 +244,12 @@ def build_case(payload: dict, evidence: Optional[dict] = None, evidence_run: Opt
     allowed = {f.name for f in fields(cls)}
     unknown = sorted(set(raw_vals) - allowed)
     vals = {k: _coerce(k, v) for k, v in raw_vals.items() if k in allowed}
+    numeric = _number_fields(cls)
+    vals = {k: (_check_number(k, v) if k in numeric else v) for k, v in vals.items()}
     if "domestic" not in vals and flight.get("domestic") is not None:
         vals["domestic"] = flight["domestic"]
     if "block_time_hours" in allowed and "block_time_hours" not in vals and flight.get("block_time_hours") is not None:
-        vals["block_time_hours"] = flight["block_time_hours"]
+        vals["block_time_hours"] = _check_number("block_time_hours", flight["block_time_hours"])
     assessment = engine(cls(**vals))
     airline = resolve_airline(flight, evidence)
 

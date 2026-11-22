@@ -39,6 +39,18 @@ class LeadTests(unittest.TestCase):
     def test_items_without_url_or_title_are_dropped(self):
         self.assertEqual(extract_leads([{"article_title": "refund ruling"}, {"article_url": "u"}, None, "junk"], "6E", "t"), [])
 
+    def test_only_http_links_become_leads_even_from_storage(self):
+        title = "IndiGo told to refund fare and pay compensation"
+        news = [{"article_url": u, "article_title": title, "article_publish_date": "2026-11-01"}
+                for u in ("javascript:alert(1)", " JavaScript:alert(1)", "data:text/html,x", "https://news.example/a")]
+        self.assertEqual([l["url"] for l in extract_leads(news, "6E", "t")], ["https://news.example/a"])
+        from flightback.store import Store
+        s = Store(":memory:")
+        bad = {"url": "javascript:alert(1)", "code": "6E", "title": title, "published": None, "publisher": None,
+               "matched": ["refund"], "via": "t"}
+        s.leads_add([bad])  # e.g. a row saved before the filter existed
+        self.assertEqual(s.leads_for("6E"), [])
+
     def test_news_from_enrich_handles_empty(self):
         self.assertEqual(news_from_enrich([]), [])
         self.assertEqual(news_from_enrich([{"matches": [{"company_data": {"news": [{"a": 1}]}}]}]), [{"a": 1}])

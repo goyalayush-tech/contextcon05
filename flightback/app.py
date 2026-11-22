@@ -18,7 +18,7 @@ from .env import load_env
 load_env()
 
 from . import watcher
-from .airlines import SOURCES, refresh_airline
+from .airlines import SOURCES, merge_grievance, refresh_airline
 from .crustdata import RATE_LIMITS, Crustdata, CrustdataError, RateLimiter
 from .evidence_run import has_live_source, run_for_case, snapshot_only
 from .extract import suggest
@@ -45,6 +45,7 @@ HINTS = {"basic_fare": "Booked one-way basic fare, not the total ticket value",
          "alt_or_refund_offered": "Did the airline offer an alternate flight or refund?",
          "contact_info_provided": "Email id or phone number given at booking",
          "extraordinary_claimed": "Did the airline cite weather, ATC, strike, etc.?",
+         "reported_at_airport": "Were you already at the airport for the original flight?",
          "statutory_fees": "Statutory taxes plus UDF/ADF/PSF from the fare break-up"}
 
 
@@ -53,7 +54,10 @@ def evidence() -> dict:
     ev = copy.deepcopy(load_evidence())
     for code, rec in store.evidence_all().items():
         if code in ev["airlines"]:
-            ev["airlines"][code].update(rec)
+            cur = ev["airlines"][code]
+            if "grievance" in rec:  # contacts merge key by key, so a stored refresh never hides snapshot contacts
+                rec = {**rec, "grievance": merge_grievance(cur.get("grievance"), rec["grievance"])}
+            cur.update(rec)
     return ev
 
 
@@ -240,7 +244,7 @@ def refresh(code: str):
     snap = evidence()["airlines"][code]
     result = refresh_airline(cd, code, snap)
     if result["status"] == "refreshed" and result.get("grievance"):
-        update = {"grievance": {**snap["grievance"], **result["grievance"]}}
+        update = {"grievance": merge_grievance(snap["grievance"], result["grievance"])}
         if result.get("identity") and "crustdata_company_id" in result["identity"]:
             update["identity"] = {**snap["identity"], **result["identity"]}
         if result["grievance"]["status"] in ("primary_verified", "primary_blocked", "unverifiable"):

@@ -125,6 +125,7 @@ class CancellationFacts:
     contact_info_provided: Optional[bool] = None  # email id or phone number given at booking/ticketing
     extraordinary_claimed: Optional[bool] = None  # airline cited extraordinary circumstances
     same_ticket_connection_missed: Optional[bool] = None
+    reported_at_airport: Optional[bool] = None    # had already reported at the airport for the original flight
 
 
 def compensation_cap(block_time_hours: Number) -> Decimal:
@@ -269,12 +270,24 @@ def assess_cancellation(f: CancellationFacts) -> Assessment:
                potential if final == Status.SUPPORTED else None, "formula": formula}
 
     # --- waiting facilities ----------------------------------------------------------
+    # Owed only when BOTH hold: the passenger had reported at the airport, and is waiting there for an alternate.
+    rule = "Owed if the passenger had already reported for the original flight and is waiting for an alternate flight."
+    if f.alternate_accepted is False or f.reported_at_airport is False:
+        why = "No alternate flight was accepted." if f.alternate_accepted is False else \
+            "The passenger had not reported at the airport."
+        wait_st, wait_detail, wait_miss = Status.NOT_APPLICABLE, f"{why} {rule}", []
+    elif f.alternate_accepted is True and f.reported_at_airport is True:
+        wait_st, wait_detail, wait_miss = Status.SUPPORTED, "Reported at the airport and waiting for the accepted " \
+                                                            "alternate flight.", []
+    else:
+        wait_st, wait_detail = Status.UNKNOWN, rule
+        wait_miss = [m for m, v in (("whether an alternate flight was accepted", f.alternate_accepted),
+                                    ("whether the passenger had already reported at the airport",
+                                     f.reported_at_airport)) if v is None]
     conds.append(_cond(
         "waiting_facilities", "3.3.2, 3.3.3, 3.8.1(a)", "Meals and refreshments while waiting at the airport",
-        Status.UNKNOWN if f.alternate_accepted is None else (Status.SUPPORTED if f.alternate_accepted else Status.NOT_APPLICABLE),
-        "Owed if the passenger had already reported for the original flight and is waiting for an alternate flight.",
-        missing=["whether the passenger reported at the airport and waited for an alternate"]
-        if f.alternate_accepted is None else []))
+        wait_st, wait_detail, {"alternate_accepted": f.alternate_accepted, "reported_at_airport": f.reported_at_airport},
+        wait_miss))
     return Assessment("cancellation", pack, conds, amounts)
 
 

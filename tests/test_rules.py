@@ -30,6 +30,16 @@ class RulePackTests(unittest.TestCase):
 
 
 class CancellationTests(unittest.TestCase):
+    def test_waiting_facilities_need_both_an_accepted_alternate_and_reporting_at_the_airport(self):
+        st = lambda **kw: canc(**kw).get("waiting_facilities")
+        self.assertEqual(st(alternate_accepted=True, reported_at_airport=True).status, Status.SUPPORTED)
+        self.assertEqual(st(alternate_accepted=True, reported_at_airport=False).status, Status.NOT_APPLICABLE)
+        self.assertEqual(st(alternate_accepted=False, reported_at_airport=True).status, Status.NOT_APPLICABLE)
+        alone = st(alternate_accepted=True)  # accepting an alternate alone no longer implies an airport wait
+        self.assertEqual(alone.status, Status.UNKNOWN)
+        self.assertEqual(alone.missing, ["whether the passenger had already reported at the airport"])
+        self.assertEqual(len(st().missing), 2)
+
     def test_caps_by_block_time_boundaries(self):
         self.assertEqual(compensation_cap(1), 5000)
         self.assertEqual(compensation_cap("1.01"), 7500)

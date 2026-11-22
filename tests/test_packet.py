@@ -17,6 +17,30 @@ class PacketTests(unittest.TestCase):
     def build(self, name):
         return build_case(SAMPLES[name], EVIDENCE)
 
+    def test_non_numeric_amount_is_a_named_input_error(self):
+        import copy
+        for field, bad in (("basic_fare", "abc"), ("fuel_charge", "NaN"), ("basic_fare", True)):
+            with self.subTest(field=field, bad=bad):
+                p = copy.deepcopy(SAMPLES["cancel_clear_win"])
+                p["facts"][field] = bad
+                with self.assertRaisesRegex(ValueError, field.replace("_", " ") + " must be a number"):
+                    build_case(p, EVIDENCE)
+        p = copy.deepcopy(SAMPLES["cancel_clear_win"])
+        p["flight"]["block_time_hours"] = "two"
+        with self.assertRaisesRegex(ValueError, "block time hours must be a number"):
+            build_case(p, EVIDENCE)
+        p = copy.deepcopy(SAMPLES["cancel_clear_win"])
+        p["facts"]["basic_fare"] = "3200"  # a numeric string is still fine
+        self.assertEqual(build_case(p, EVIDENCE)["amounts"]["payable_compensation"], "3650")
+
+    def test_verified_record_missing_an_officer_email_is_not_a_route_and_does_not_crash(self):
+        import copy
+        ev = copy.deepcopy(EVIDENCE)
+        ev["airlines"]["6E"]["grievance"]["contacts"] = {"nodal_officer_email": "nodalofficer@goindigo.in"}
+        case = build_case(SAMPLES["cancel_clear_win"], ev)
+        self.assertEqual(case["escalation"][0]["how"], "CANNOT VERIFY")
+        self.assertEqual(case["escalation"][-1]["to"], "AirSewa (Ministry of Civil Aviation)")
+
     def test_every_sample_meets_its_expectation(self):
         for name, s in SAMPLES.items():
             case = self.build(name)

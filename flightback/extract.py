@@ -18,10 +18,14 @@ DT_PATTERNS = [
     (re.compile(r"(\d{1,2})[/-](\d{1,2})[/-](\d{4})[ ,]+(?:at\s*)?(\d{1,2}):(\d{2})"), "dmy"),  # day first, as in India
 ]
 FIELD_HINTS = [
-    ("scheduled_departure", r"scheduled|original|std\b|was due|planned|departure"),
-    ("expected_departure", r"revised|rescheduled|new time|now depart|etd|delayed to|expected"),
+    ("scheduled_departure", r"scheduled|original|\bstd\b|was due|planned"),
+    ("expected_departure", r"revised|rescheduled|new (?:departure )?time|new departure|now depart|will now|"
+                           r"\betd\b|delayed to|expected"),
     ("informed_at", r"informed|notified|sent|received|date:|at the time of this message"),
 ]
+# The bare word "departure" sits next to revised times too ("revised departure"), so it only counts when no
+# specific keyword above is near the date.
+FALLBACK_HINTS = [("scheduled_departure", r"departure|\bdeparts?\b")]
 AMOUNT = re.compile(r"(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{1,2})?)", re.I)
 AMOUNT_LABELS = [
     ("basic_fare", r"basic fare|base fare"),
@@ -75,7 +79,7 @@ def suggest(text: str) -> dict:
                 continue
             seen.add((m.start(), m.end()))
             cands.append({"type": "datetime", "value": dt.strftime("%Y-%m-%dT%H:%M"), "suggested_field":
-                          _hint(text, m.start(), FIELD_HINTS), "snippet": _snip(text, m.start(), m.end()),
+                          _hint(text, m.start(), FIELD_HINTS) or _hint(text, m.start(), FALLBACK_HINTS), "snippet": _snip(text, m.start(), m.end()),
                           "pos": m.start()})
     for m in AMOUNT.finditer(text):
         amt = float(m.group(1).replace(",", ""))

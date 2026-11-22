@@ -50,6 +50,32 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(b["duplicate_ignored"])
         self.assertEqual(len(b["followups"]), 1)
 
+    def test_bad_number_is_422_not_500(self):
+        p = json.loads(json.dumps(self.sample))
+        p["facts"]["basic_fare"] = "abc"
+        r = self.c.post("/api/case", json=p)
+        self.assertEqual(r.status_code, 422)
+        self.assertIn("basic fare must be a number", r.json()["detail"])
+
+    def test_same_rejection_later_is_a_new_event_and_escalation_advances(self):
+        from unittest import mock
+        p = json.loads(json.dumps(self.sample))
+        p["flight"]["pnr"] = "ESCAL1"
+        cid = self.c.post("/api/case", json=p).json()["case_id"]
+        body = {"kind": "airline_rejection", "data": {"reason": "weather"}}
+        t0 = 1_800_000_000.0
+        with mock.patch.object(self.appmod.store, "clock", lambda: t0):
+            first = self.c.post(f"/api/case/{cid}/followup", json=body).json()
+            repeat = self.c.post(f"/api/case/{cid}/followup", json=body).json()  # double click
+        with mock.patch.object(self.appmod.store, "clock", lambda: t0 + 86400):  # appellate rejects next day
+            second = self.c.post(f"/api/case/{cid}/followup", json=body).json()
+        self.assertTrue(first["recorded"])
+        self.assertTrue(repeat["duplicate_ignored"])
+        self.assertTrue(second["recorded"])
+        self.assertEqual(len(second["followups"]), 2)
+        self.assertIn("Nodal Officer", first["next_step"])
+        self.assertIn("Appellate Authority", second["next_step"])
+
     def test_rejection_citing_extraordinary_circumstances_gets_the_right_advice(self):
         cid = self.make()["case_id"]
         r = self.c.post(f"/api/case/{cid}/followup", json={"kind": "airline_rejection",
@@ -140,6 +166,26 @@ class LiveCasePathTests(unittest.TestCase):
                                                             sleep=lambda s: None))
         with mock.patch.dict(os.environ, {"CRUSTDATA_API_KEY": "k"}), mock.patch.object(self.appmod, "case_client", factory):
             return self.c.post("/api/case", json=sample).json()
+
+    def test_live_case_keeps_the_customer_support_step(self):
+        r = self.make(self.page(), pnr="LIVE3")
+        self.assertEqual(r["evidence_run"]["mode"], "live")
+        self.assertEqual(r["escalation"][0]["how"], "Customer.experience@goindigo.in")
+
+    def test_out_of_credits_during_case_creation_falls_back_to_the_snapshot(self):
+        from unittest import mock
+        from flightback.crustdata import Crustdata, RateLimiter
+        from flightback.store import Store
+        sample = json.loads(json.dumps(self.sample))
+        sample["flight"]["pnr"] = "NOCREDIT"
+        factory = lambda cid: Crustdata(Store(":memory:"), f"case:{cid}", 3.0, api_key="k",
+                                        transport=_Seq((402, {}, {"error": "out of credits"})),
+                                        limiter=RateLimiter({"core": 99, "web": 99}, sleep=lambda s: None))
+        with mock.patch.dict(os.environ, {"CRUSTDATA_API_KEY": "k"}), mock.patch.object(self.appmod, "case_client", factory):
+            resp = self.c.post("/api/case", json=sample)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["evidence_run"]["mode"], "stale_snapshot")
+        self.assertTrue(any("did not verify" in w for w in resp.json()["warnings"]))
 
     def test_no_key_means_snapshot_only_and_says_why(self):
         r = self.c.post("/api/case", json=self.sample).json()

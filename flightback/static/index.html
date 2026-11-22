@@ -152,7 +152,7 @@ function leadsHtml(c){
   const l=c.leads||{items:[]};
   return `<div class="card"><h2>Precedent leads <span class="lead"><span class="lab">LEAD, NOT PROOF</span></span></h2>
     <div class="small mute">${esc(l.note||'')}</div>
-    ${l.items.length?l.items.map(x=>`<div class="lead"><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a><div class="small mute">${esc(x.published||'date unknown')} · ${esc(x.publisher||'')} · matched: ${esc(x.matched.join(', '))}</div></div>`).join(''):'<div class="mute small" style="margin-top:6px">No leads collected for this airline yet.</div>'}
+    ${l.items.length?l.items.map(x=>`<div class="lead">${/^https?:\/\//i.test(String(x.url||'').trim())?`<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a>`:esc(x.title)}<div class="small mute">${esc(x.published||'date unknown')} · ${esc(x.publisher||'')} · matched: ${esc(x.matched.join(', '))}</div></div>`).join(''):'<div class="mute small" style="margin-top:6px">No leads collected for this airline yet.</div>'}
   </div>`;
 }
 function render(c){

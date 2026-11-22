@@ -14,7 +14,7 @@ from __future__ import annotations
 import copy
 from typing import Optional
 
-from .airlines import SOURCES, refresh_airline
+from .airlines import SOURCES, merge_grievance, refresh_airline
 from .crustdata import Crustdata
 
 
@@ -48,7 +48,7 @@ def run_for_case(cd: Crustdata, code: str, snapshot: dict) -> tuple[dict, dict]:
                  live_http_status=g.get("http_status"), live_passage_sha256=new_sha, snapshot_passage_sha256=old_sha,
                  passage_changed=(new_sha != old_sha) if old_sha else None,
                  changes=result["changes"], contacts_changed=bool(result["changes"]))
-    record["grievance"] = {**snap_g, **g}
+    record["grievance"] = merge_grievance(snap_g, g)
     if result.get("identity") and "crustdata_company_id" in result["identity"]:
         record["identity"] = {**snapshot.get("identity", {}), **result["identity"]}
     return block, record

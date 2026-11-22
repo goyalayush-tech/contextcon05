@@ -23,6 +23,11 @@ NOISE = ("share price", "stock", "target price", "shares", "nifty", "sensex", "q
 LABEL = "LEAD, NOT PROOF"
 
 
+def safe_url(url) -> bool:
+    """News URLs come from an outside feed and become links: only plain http(s) is allowed (no javascript:, data:)."""
+    return isinstance(url, str) and url.strip().lower().startswith(("https://", "http://"))
+
+
 def classify(title: str) -> list[str]:
     t = (title or "").lower()
     strong = [w for w in STRONG if w in t]
@@ -42,7 +47,7 @@ def extract_leads(news: Iterable[dict], code: str, via: str) -> list[dict]:
         if not isinstance(n, dict):
             continue
         url, title = n.get("article_url"), n.get("article_title")
-        if not url or not title or url in seen:
+        if not url or not title or url in seen or not safe_url(url):
             continue
         matched = classify(title)
         if not matched:

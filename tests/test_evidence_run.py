@@ -41,6 +41,24 @@ def ok(payload, credits):
 
 
 class EvidenceRunTests(unittest.TestCase):
+    def test_credits_exhausted_or_endpoint_disabled_falls_back_instead_of_raising(self):
+        for status in (402, 403):
+            with self.subTest(status=status):
+                block, rec = run_for_case(client((status, {}, {"error": "x"})), "6E", SNAP)
+                self.assertEqual(block["mode"], "stale_snapshot")
+                self.assertIn("error", block["reason"])
+                self.assertEqual(rec["grievance"], SNAP["grievance"])
+                self.assertEqual(block["calls"][0]["status"], "error")
+
+    def test_live_verify_keeps_snapshot_contacts_the_page_does_not_carry(self):
+        snap = {**SNAP, "grievance": {**SNAP["grievance"], "contacts": {
+            **SNAP["grievance"]["contacts"], "customer_email": "Customer.experience@goindigo.in", "phone": "0124"}}}
+        block, rec = run_for_case(client(ok(IDENT, "0.2"), ok(page(), "1.0")), "6E", snap)
+        self.assertEqual(block["mode"], "live")
+        self.assertEqual(rec["grievance"]["contacts"]["customer_email"], "Customer.experience@goindigo.in")
+        self.assertEqual(rec["grievance"]["contacts"]["phone"], "0124")
+        self.assertEqual(rec["grievance"]["contacts"]["nodal_officer_email"], "nodalofficer@goindigo.in")
+
     def test_live_run_reports_calls_credits_and_unchanged_contacts(self):
         block, rec = run_for_case(client(ok(IDENT, "0.2"), ok(page(), "1.0")), "6E", SNAP)
         self.assertEqual(block["mode"], "live")

@@ -11,6 +11,8 @@ import threading
 import time
 from typing import Any, Optional
 
+from .leads import safe_url
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS cache (
     key        TEXT PRIMARY KEY,
@@ -79,8 +81,12 @@ CREATE TABLE IF NOT EXISTS airline_evidence (
 """
 
 
+FOLLOWUP_REPEAT_WINDOW_S = 600  # an identical follow-up inside this window is treated as a repeat, not a new event
+
+
 class Store:
     def __init__(self, path: str = "flightback.db"):
+        self.clock = time.time  # replaceable in tests
         self._lock = threading.RLock()
         self._db = sqlite3.connect(path, check_same_thread=False)
         self._db.row_factory = sqlite3.Row
@@ -190,12 +196,21 @@ class Store:
             return cur.rowcount == 1
 
     def followup_add(self, case_id: str, kind: str, data: dict) -> bool:
+        """Record a follow-up. An identical one (same kind and data) within FOLLOWUP_REPEAT_WINDOW_S of the last is a
+        repeat (double click, retry) and is ignored. Later it is a new event: a nodal officer and then the appellate
+        authority can reject for the same reason, and escalation must count both."""
         import hashlib
-        dedupe = hashlib.sha256((kind + json.dumps(data, sort_keys=True)).encode()).hexdigest()[:16]
+        base = hashlib.sha256((kind + json.dumps(data, sort_keys=True)).encode()).hexdigest()[:16]
+        now = self.clock()
         with self._lock:
+            rows = self._db.execute("SELECT ts FROM followups WHERE case_id=? AND (dedupe=? OR dedupe LIKE ?) "
+                                    "ORDER BY ts DESC", (case_id, base, base + ":%")).fetchall()
+            if rows and now - rows[0]["ts"] < FOLLOWUP_REPEAT_WINDOW_S:
+                return False
+            dedupe = base if not rows else f"{base}:{len(rows)}"  # keeps UNIQUE(case_id, dedupe) satisfied
             try:
                 self._db.execute("INSERT INTO followups (case_id, ts, dedupe, kind, data) VALUES (?,?,?,?,?)",
-                                 (case_id, time.time(), dedupe, kind, json.dumps(data)))
+                                 (case_id, now, dedupe, kind, json.dumps(data)))
                 self._db.commit()
                 return True
             except sqlite3.IntegrityError:
@@ -247,7 +262,7 @@ class Store:
                                     (code, limit)).fetchall()
         return [{"code": r["code"], "title": r["title"], "url": r["url"], "published": r["published"],
                  "publisher": r["publisher"], "matched": json.loads(r["matched"]), "via": r["via"],
-                 "label": "LEAD, NOT PROOF"} for r in rows]
+                 "label": "LEAD, NOT PROOF"} for r in rows if safe_url(r["url"])]
 
     def leads_count(self, code: str) -> int:
         with self._lock:

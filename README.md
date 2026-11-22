@@ -41,7 +41,7 @@ cp .env.example .env            # add CRUSTDATA_API_KEY (optional: without it th
 # open http://localhost:8000 and pick a synthetic example
 ```
 
-Tests (113): `.venv/bin/python -m unittest discover -s tests -t .` — no credits used; the Crustdata client is tested with a fake transport.
+Tests (127): `.venv/bin/python -m unittest discover -s tests -t .` — no credits used; the Crustdata client is tested with a fake transport.
 
 ## How it works
 

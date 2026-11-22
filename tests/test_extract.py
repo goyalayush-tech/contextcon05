@@ -38,6 +38,19 @@ class ExtractTests(unittest.TestCase):
         r = suggest("Your flight is cancelled due to operational reasons.")
         self.assertFalse(by_field(r, "extraordinary_claimed")[0]["value"])
 
+    def test_revised_departure_is_not_read_as_the_scheduled_one(self):
+        for text in ("Revised departure: 2026-11-21 15:00", "New departure time 2026-11-21 15:00",
+                     "Your flight will now depart at 21 Nov 2026 15:00"):
+            with self.subTest(text=text):
+                self.assertEqual(by_field(suggest(text), "expected_departure")[0]["value"], "2026-11-21T15:00")
+
+    def test_plain_departure_is_still_the_scheduled_time_and_both_times_are_split(self):
+        self.assertEqual(by_field(suggest("Departure 2026-11-21 09:00"), "scheduled_departure")[0]["value"],
+                         "2026-11-21T09:00")
+        r = suggest("Original departure 2026-11-21 09:00, revised departure 2026-11-21 15:00")
+        self.assertEqual(by_field(r, "scheduled_departure")[0]["value"], "2026-11-21T09:00")
+        self.assertEqual(by_field(r, "expected_departure")[0]["value"], "2026-11-21T15:00")
+
     def test_cancellation_is_noted(self):
         self.assertTrue(any("cancelled by the airline" in n for n in self.r["notes"]))
 

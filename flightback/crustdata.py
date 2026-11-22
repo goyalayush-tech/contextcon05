@@ -36,16 +36,16 @@ class BudgetExceeded(Exception):
     """The next call would push the run past its credit ceiling."""
 
 
-class CreditsExhausted(Exception):
+class CrustdataError(Exception):
+    """Any failed Crustdata call. Callers that fall back to the snapshot catch this one class."""
+
+
+class CreditsExhausted(CrustdataError):
     """HTTP 402 from Crustdata: the account itself is out of credits."""
 
 
-class EndpointDisabled(Exception):
+class EndpointDisabled(CrustdataError):
     """HTTP 403: this endpoint is not enabled on the key."""
-
-
-class CrustdataError(Exception):
-    pass
 
 
 def endpoint_group(path: str) -> str:
