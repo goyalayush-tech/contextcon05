@@ -80,6 +80,16 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(r.status_code, 503)
         self.assertIn("snapshot", r.json()["detail"])
 
+    def test_extract_suggests_facts_with_quotes_and_never_applies_them(self):
+        r = self.c.post("/api/extract", json={"text": "Flight cancelled. Scheduled 20 Nov 2026 17:00. Basic fare Rs 3,200."}).json()
+        fields = {c["suggested_field"]: c for c in r["candidates"]}
+        self.assertEqual(fields["scheduled_departure"]["value"], "2026-11-20T17:00")
+        self.assertEqual(fields["basic_fare"]["value"], 3200.0)
+        self.assertIn("20 Nov 2026 17:00", fields["scheduled_departure"]["snippet"])
+
+    def test_oversized_paste_is_rejected(self):
+        self.assertEqual(self.c.post("/api/extract", json={"text": "x" * 20001}).status_code, 413)
+
     def test_schema_covers_all_three_case_types(self):
         self.assertEqual(set(self.c.get("/api/schema").json()), {"cancellation", "delay", "refund"})
 

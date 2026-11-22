@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 
 from .airlines import SOURCES, refresh_airline
 from .crustdata import Crustdata
+from .extract import suggest
 from .packet import KINDS, build_case, jsonable, load_evidence
 from .rules import PART_II, PART_IV
 from .store import Store
@@ -99,6 +100,14 @@ def sample(key: str):
     if key not in SAMPLES:
         raise HTTPException(404, "unknown sample")
     return {k: v for k, v in SAMPLES[key].items() if k not in ("expect", "title")}
+
+
+@app.post("/api/extract")
+def extract(body: dict = Body(...)):
+    text = str(body.get("text", ""))
+    if len(text) > 20000:
+        raise HTTPException(413, "Paste at most 20,000 characters")
+    return suggest(text)
 
 
 @app.get("/api/rules")

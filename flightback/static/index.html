@@ -74,6 +74,12 @@ ul.clean{margin:4px 0;padding-left:18px}
     <div class="card">
       <h2>2 · Facts <span class="mute small">(times are India time)</span></h2>
       <div class="small mute">Leave anything you do not know blank. We will list it as missing instead of guessing. Add the document or quote each fact comes from.</div>
+      <details style="margin-top:8px"><summary><b>Paste an airline message or e-ticket text</b> <span class="mute small">(we suggest facts; you confirm each)</span></summary>
+        <label>Document name</label><input id="x_doc" placeholder="airline-email.eml">
+        <label>Text</label><textarea id="x_text" style="min-height:110px"></textarea>
+        <div style="margin-top:6px"><button class="sec" id="x_go">Find facts</button></div>
+        <div id="x_out" class="small"></div>
+      </details>
       <div id="facts"></div>
       <div style="margin-top:12px"><button id="go">Assess my case</button></div>
     </div>
@@ -182,6 +188,25 @@ function render(c){
     catch(e){$('#fu_out').textContent=e.message}};
 }
 
+async function findFacts(){
+  const doc=$('#x_doc').value.trim()||'pasted text';
+  const r=await post('/api/extract',{text:$('#x_text').value});
+  const kind=$('#kind').value;
+  const want={datetime:'datetime',amount:'number',bool:'bool'};
+  const rows=r.candidates.map((c,i)=>{
+    const opts=schema[kind].filter(f=>f.type===want[c.type]&&f.name!=='block_time_hours');
+    const sel=`<select data-i="${i}">${c.suggested_field?'':'<option value="">choose field…</option>'}${opts.map(f=>`<option value="${f.name}" ${f.name===c.suggested_field?'selected':''}>${esc(f.label)}</option>`).join('')}</select>`;
+    return `<div class="fact"><b>${esc(String(c.value))}</b> <span class="mute">(${c.type})</span><div class="mute">“${esc(c.snippet)}”</div>${c.note?`<div class="warn">${esc(c.note)}</div>`:''}<div class="row">${sel}<button class="sec" data-use="${i}">Use this</button></div></div>`}).join('');
+  $('#x_out').innerHTML=`${r.notes.map(n=>`<div class="warn">${esc(n)}</div>`).join('')}<div class="mute">${esc(r.assumption)}</div>${rows}`;
+  $('#x_out').querySelectorAll('[data-use]').forEach(b=>b.onclick=()=>{
+    const i=b.dataset.use,c=r.candidates[i],field=$(`#x_out select[data-i="${i}"]`).value;
+    if(!field){b.textContent='pick a field';return}
+    const el=document.querySelector(`[data-f="${field}"]`);if(!el)return;
+    el.value=String(c.value);
+    document.querySelector(`[data-d="${field}"]`).value=`${doc} — "${c.snippet}"`;
+    b.textContent='Used ✓';b.disabled=true;
+  });
+}
 async function loadBadges(){
   const [h,airs]=await Promise.all([api('/api/health'),api('/api/airlines')]);
   $('#badges').innerHTML=`<span class="badge">Crustdata: ${h.crustdata_key_present?'live key set':'replaying dated snapshot'}</span>
@@ -194,6 +219,7 @@ async function loadBadges(){
   $('#sample').innerHTML+=sm.map(s=>`<option value="${s.key}">${esc(s.title)}</option>`).join('');
   renderFacts();loadBadges();
   $('#kind').onchange=renderFacts;
+  $('#x_go').onclick=()=>findFacts().catch(e=>$('#x_out').textContent=e.message);
   $('#sample').onchange=async e=>{if(e.target.value)fillForm(await api('/api/samples/'+e.target.value))};
   $('#go').onclick=async()=>{
     $('#go').disabled=true;
