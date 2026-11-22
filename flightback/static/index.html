@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FLIGHTBACK</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#16181d;--mute:#5c6573;--line:#dfe3ea;--accent:#1f4fd8;--ok:#127a3d;--okbg:#e3f5ea;--no:#8a2020;--nobg:#fbe7e7;--unk:#6b5200;--unkbg:#fff3cf;--rev:#7a3d00;--revbg:#ffe8d1;--na:#4a5260;--nabg:#eceff4}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#181b21;--ink:#e8eaee;--mute:#9aa3b2;--line:#2a2f38;--accent:#7ea2ff;--ok:#6fd29a;--okbg:#12301f;--no:#ff9c9c;--nobg:#3a1a1a;--unk:#f2d46b;--unkbg:#3a3010;--rev:#ffb878;--revbg:#3a2410;--na:#aab2c0;--nabg:#232831}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{padding:20px 16px 8px;max-width:1180px;margin:0 auto}
+h1{margin:0;font-size:26px;letter-spacing:.5px}
+.tag{color:var(--mute);margin:2px 0 10px}
+.badges{display:flex;flex-wrap:wrap;gap:8px}
+.badge{font-size:12px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--mute)}
+main{max-width:1180px;margin:0 auto;padding:8px 16px 60px;display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:16px}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{margin:0 0 8px;font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}
+label{display:block;font-size:12px;color:var(--mute);margin:8px 0 2px}
+input,select,textarea,button{font:inherit;color:inherit}
+input,select,textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
+textarea{min-height:240px;font:13px/1.45 ui-monospace,Menlo,monospace}
+button{padding:8px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.sec{background:transparent;color:var(--accent)}
+button:disabled{opacity:.5;cursor:default}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fact{border-top:1px dashed var(--line);padding-bottom:4px}
+.fact .doc{font-size:12px;margin-top:3px;padding:4px 7px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:7px 6px;border-top:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:600;font-size:12px}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.SUPPORTED{background:var(--okbg);color:var(--ok)}.NOT_SUPPORTED{background:var(--nobg);color:var(--no)}
+.UNKNOWN{background:var(--unkbg);color:var(--unk)}.REVIEW_REQUIRED{background:var(--revbg);color:var(--rev)}.NOT_APPLICABLE{background:var(--nabg);color:var(--na)}
+.mute{color:var(--mute)}.small{font-size:12.5px}
+.warn{border-left:3px solid var(--rev);padding:4px 10px;margin:6px 0;background:var(--revbg);border-radius:4px;font-size:13px}
+.step{display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
+.step b{min-width:20px}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:10px;font-size:12.5px;margin:6px 0}
+.big{font-size:22px;font-weight:700}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+ul.clean{margin:4px 0;padding-left:18px}
+.ok{color:var(--ok)}.bad{color:var(--no)}
+</style>
+</head>
+<body>
+<header>
+  <h1>FLIGHTBACK</h1>
+  <div class="tag">Your flight was disrupted. We handle the recovery. Nothing is ever sent for you.</div>
+  <div class="badges" id="badges"></div>
+</header>
+<main>
+  <section>
+    <div class="card">
+      <h2>1 · Your case</h2>
+      <label>Start from a synthetic example</label>
+      <select id="sample"><option value="">— blank case —</option></select>
+      <label>What happened?</label>
+      <select id="kind"><option value="cancellation">Flight cancelled by the airline</option><option value="delay">Flight delayed</option><option value="refund">Refund problem</option></select>
+      <div class="row">
+        <div><label>Flight number</label><input id="f_flight_number" placeholder="6E 123"></div>
+        <div><label>Booking ref (PNR)</label><input id="f_pnr"></div>
+        <div><label>From</label><input id="f_origin" placeholder="DEL"></div>
+        <div><label>To</label><input id="f_destination" placeholder="BOM"></div>
+        <div><label>Flight date</label><input id="f_date" type="date"></div>
+        <div><label>Block time (hours)</label><input id="f_block_time_hours" type="number" step="0.1"></div>
+        <div><label>Ticket shows (marketing)</label><input id="f_marketing_carrier" placeholder="AI"></div>
+        <div><label>Operated by</label>
+          <select id="f_operating_carrier"><option value="">not stated</option><option value="6E">IndiGo</option><option value="AI">Air India</option><option value="QP">Akasa Air</option><option value="IX">Air India Express</option><option value="SG">SpiceJet</option><option value="9I">Alliance Air</option><option value="ZZ">Other / not in list</option></select></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>2 · Facts <span class="mute small">(times are India time)</span></h2>
+      <div class="small mute">Leave anything you do not know blank. We will list it as missing instead of guessing. Add the document or quote each fact comes from.</div>
+      <div id="facts"></div>
+      <div style="margin-top:12px"><button id="go">Assess my case</button></div>
+    </div>
+  </section>
+  <section id="out"><div class="card"><h2>Result</h2><div class="mute">Pick an example on the left, or fill in your own facts, then press Assess.</div></div></section>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pill=s=>`<span class="pill ${s}">${s.replace('_',' ')}</span>`;
+let schema={},current=null;
+
+async function api(path,opts){const r=await fetch(path,opts);const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||r.statusText);return j}
+const post=(p,b)=>api(p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b||{})});
+
+function renderFacts(){
+  const kind=$('#kind').value;
+  $('#facts').innerHTML=schema[kind].filter(f=>f.name!=='block_time_hours').map(f=>{
+    let inp;
+    if(f.type==='datetime')inp=`<input data-f="${f.name}" data-t="datetime" type="datetime-local">`;
+    else if(f.type==='date')inp=`<input data-f="${f.name}" data-t="date" type="date">`;
+    else if(f.type==='bool')inp=`<select data-f="${f.name}" data-t="bool"><option value="">don't know</option><option value="true">yes</option><option value="false">no</option></select>`;
+    else if(f.type==='enum')inp=`<select data-f="${f.name}" data-t="text"><option value="">don't know</option>${f.options.map(o=>`<option>${o}</option>`).join('')}</select>`;
+    else if(f.type==='number')inp=`<input data-f="${f.name}" data-t="number" type="number" step="any">`;
+    else inp=`<input data-f="${f.name}" data-t="text">`;
+    return `<div class="fact"><label>${esc(f.label)}${f.hint?` <span class="small">· ${esc(f.hint)}</span>`:''}</label>${inp}<input class="doc" data-d="${f.name}" placeholder="from which document / quote (optional)"></div>`}).join('');
+}
+function readForm(){
+  const flight={domestic:true};
+  for(const id of ['flight_number','pnr','origin','destination','date','marketing_carrier','operating_carrier'])flight[id]=$('#f_'+id).value||undefined;
+  const bt=$('#f_block_time_hours').value;if(bt)flight.block_time_hours=parseFloat(bt);
+  const facts={};
+  document.querySelectorAll('[data-f]').forEach(el=>{
+    let v=el.value;if(v==='')return;
+    if(el.dataset.t==='bool')v=v==='true';else if(el.dataset.t==='number')v=parseFloat(v);
+    else if(el.dataset.t==='datetime')v=v.length===16?v+':00+05:30':v;
+    const doc=document.querySelector(`[data-d="${el.dataset.f}"]`).value.trim();
+    facts[el.dataset.f]=doc?{value:v,doc}:v;
+  });
+  return {case_type:$('#kind').value,flight,facts};
+}
+function fillForm(p){
+  $('#kind').value=p.case_type;renderFacts();
+  for(const [k,v] of Object.entries(p.flight||{})){const el=$('#f_'+k);if(el&&typeof v!=='boolean')el.value=v}
+  for(const [k,raw] of Object.entries(p.facts||{})){
+    const el=document.querySelector(`[data-f="${k}"]`);if(!el)continue;
+    const item=(raw&&typeof raw==='object'&&'value' in raw)?raw:{value:raw};
+    let v=item.value;
+    if(el.dataset.t==='datetime')v=String(v).slice(0,16);
+    el.value=String(v);
+    if(item.doc)document.querySelector(`[data-d="${k}"]`).value=item.doc+(item.snippet?` — "${item.snippet}"`:'');
+  }
+}
+
+function render(c){
+  current=c;
+  const am=c.amounts||{},money=x=>x==null?'—':'Rs '+x;
+  const a=c.airline;
+  const g=a.grievance;
+  const pack=c.rule_pack;
+  const routeHtml=c.escalation.map(s=>`<div class="step"><b>${s.step}</b><div><b>${esc(s.to)}</b><br><span class="${s.how==='CANNOT VERIFY'?'bad':''}">${esc(s.how)}</span><div class="mute small">${esc(s.note)}</div></div></div>`).join('');
+  $('#out').innerHTML=`
+  <div class="card"><h2>Summary · case ${esc(c.case_id)}</h2>
+    <div class="chips">${Object.entries(c.status_counts).map(([k,n])=>`${pill(k)} ×${n}`).join(' &nbsp; ')}</div>
+    ${c.headline.length?`<ul class="clean">${c.headline.map(h=>`<li>${esc(h)}</li>`).join('')}</ul>`:'<div class="mute">No claim is supported by the facts provided yet.</div>'}
+    ${am.payable_compensation?`<div class="big">Compensation: ${money(am.payable_compensation)}</div><div class="mute small">${esc(am.formula)}</div>`:''}
+    ${am.shortfall?`<div class="big">Refund shortfall: ${money(am.shortfall)}</div>`:''}
+    ${c.warnings.map(w=>`<div class="warn">${esc(w)}</div>`).join('')}
+    <div class="small mute">Rule pack: ${esc(pack.id)} ${esc(pack.revision)}, effective ${esc(pack.effective)} · <b class="${pack.verified?'ok':'bad'}">${pack.verified?'verified against the official text':'NOT verified'}</b>${pack.source_url?` · <a href="${esc(pack.source_url)}" target="_blank" rel="noopener">official source</a>`:''}</div>
+  </div>
+  <div class="card"><h2>Rights check, condition by condition</h2>
+    <table><tr><th>Condition</th><th>Status</th><th>Why</th></tr>
+    ${c.conditions.map(x=>`<tr><td><b>${esc(x.label)}</b><div class="mute small">para ${esc(x.rule_ref)}</div></td><td>${pill(x.status)}</td><td>${esc(x.detail)}${x.missing.length?`<div class="small bad">Missing: ${esc(x.missing.join('; '))}</div>`:''}</td></tr>`).join('')}</table>
+  </div>
+  <div class="card"><h2>Timeline</h2>${c.timeline.length?`<table>${c.timeline.map(t=>`<tr><td style="width:210px">${esc(t.time.replace('T',' '))}</td><td>${esc(t.event)}</td></tr>`).join('')}</table>`:'<div class="mute">No times given.</div>'}</div>
+  <div class="card"><h2>Airline and where to complain</h2>
+    <div><b>${esc(a.identity?a.identity.name:(a.code?('Airline '+a.code):'Operating airline not established'))}</b> ${a.identity?`<span class="mute small">· Crustdata company #${esc(a.identity.crustdata_company_id)}, matched on ${esc(a.identity.matched_on)}, confidence ${esc(a.identity.confidence)}</span>`:''}</div>
+    ${a.notes.map(n=>`<div class="warn">${esc(n)}</div>`).join('')}
+    ${g&&g.status==='primary_verified'?`<div class="small mute">Source: <a href="${esc(g.source_url)}" target="_blank" rel="noopener">${esc(g.source_url)}</a> · retrieved ${esc(g.retrieved_at)} (HTTP ${esc(g.http_status)}) · passage hash ${esc((g.passage_sha256||'').slice(0,12))}</div>`:''}
+    ${g&&g.status!=='primary_verified'?`<div class="warn">Grievance route status: ${esc(g.status)}. ${esc(g.detail||g.status_for_packet||'')}</div>`:''}
+    ${routeHtml}
+  </div>
+  <div class="card"><h2>Still missing</h2>${c.missing.length?`<ul class="clean">${c.missing.map(m=>`<li>${esc(m)}</li>`).join('')}</ul>`:'<div class="mute">Nothing required is missing.</div>'}</div>
+  <div class="card"><h2>Complaint draft — not sent</h2>
+    <pre id="draft">${esc(c.complaint_draft)}</pre>
+    <button class="sec" id="copy">Copy text</button>
+    <button id="approve" ${c.approval.state==='approved_by_passenger'?'disabled':''}>${c.approval.state==='approved_by_passenger'?'Approved by you':'I have reviewed this — approve'}</button>
+    <div class="small mute" style="margin-top:6px">Approving records your consent only. FLIGHTBACK does not send anything; submit through the airline's channel or AirSewa yourself.</div>
+  </div>
+  <div class="card"><h2>After you submit</h2>
+    <div class="row"><div><label>What happened?</label><select id="fu_kind"><option value="complaint_submitted">I submitted the complaint</option><option value="airline_response">Airline replied</option><option value="airline_rejection">Airline rejected it</option><option value="refund_received">Refund received</option></select></div>
+    <div><label>Reference no. / reason / amount</label><input id="fu_val"></div></div>
+    <div style="margin-top:8px"><button id="fu_go" class="sec">Record</button></div>
+    <div id="fu_out" class="small" style="margin-top:8px"></div>
+  </div>
+  <div class="card"><h2>Evidence index</h2>
+    <table><tr><th>Fact</th><th>Value</th><th>Source</th></tr>${c.evidence_index.map(e=>`<tr><td>${esc(e.fact.replace(/_/g,' '))}</td><td>${esc(e.value)}</td><td class="${e.doc?'':'bad'}">${esc(e.doc||e.provenance)}</td></tr>`).join('')}</table>
+  </div>`;
+  $('#copy').onclick=()=>navigator.clipboard.writeText(c.complaint_draft);
+  $('#approve').onclick=async()=>{const r=await post(`/api/case/${c.case_id}/approve`);$('#approve').textContent='Approved by you';$('#approve').disabled=true};
+  $('#fu_go').onclick=async()=>{
+    const kind=$('#fu_kind').value,val=$('#fu_val').value.trim();
+    const data=kind==='complaint_submitted'?{reference:val}:kind==='airline_rejection'?{reason:val}:kind==='refund_received'?{amount:parseFloat(val)}:{summary:val};
+    try{const r=await post(`/api/case/${c.case_id}/followup`,{kind,data});
+      $('#fu_out').innerHTML=`${r.duplicate_ignored?'<span class="mute">Already recorded, ignored.</span> ':''}<b>Next:</b> ${esc(r.next_step)}`}
+    catch(e){$('#fu_out').textContent=e.message}};
+}
+
+async function loadBadges(){
+  const [h,airs]=await Promise.all([api('/api/health'),api('/api/airlines')]);
+  $('#badges').innerHTML=`<span class="badge">Crustdata: ${h.crustdata_key_present?'live key set':'replaying dated snapshot'}</span>
+   <span class="badge">Credits spent this session: ${h.spent.toFixed(2)} / ${h.ceiling}</span>
+   ${airs.map(a=>`<span class="badge" title="${esc(a.retrieved_at||'')}">${esc(a.airline)}: ${esc(a.grievance_status.replace('_',' '))}</span>`).join('')}`;
+}
+(async()=>{
+  schema=await api('/api/schema');
+  const sm=await api('/api/samples');
+  $('#sample').innerHTML+=sm.map(s=>`<option value="${s.key}">${esc(s.title)}</option>`).join('');
+  renderFacts();loadBadges();
+  $('#kind').onchange=renderFacts;
+  $('#sample').onchange=async e=>{if(e.target.value)fillForm(await api('/api/samples/'+e.target.value))};
+  $('#go').onclick=async()=>{
+    $('#go').disabled=true;
+    try{render(await post('/api/case',readForm()))}catch(e){$('#out').innerHTML=`<div class="card"><div class="warn">${esc(e.message)}</div></div>`}
+    $('#go').disabled=false;loadBadges();
+  };
+})();
+</script>
+</body>
+</html>

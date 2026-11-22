@@ -139,9 +139,15 @@ def _timeline(vals: dict, kind: str) -> list[dict]:
     return events
 
 
+ENTITLEMENTS = {"alt_or_refund_obligation", "compensation", "meals_obligation", "hotel_obligation", "waiting_facilities",
+                "refund_timeline_breach", "statutory_fees_breach", "cancellation_charge_breach", "credit_shell_breach"}
+
+
 def _headline(a: Assessment) -> list[str]:
     out = []
     for c in a.conditions:
+        if c.id not in ENTITLEMENTS:
+            continue
         if c.status == Status.SUPPORTED:
             out.append(f"SUPPORTED: {c.label} (para {c.rule_ref}). {c.detail}")
         elif c.status == Status.REVIEW_REQUIRED:
